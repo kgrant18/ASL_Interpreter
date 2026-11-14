@@ -1,0 +1,15 @@
+# SignBridge backend — Python 3.11/3.12 (MediaPipe + PyTorch wheels).
+# Exact resolved versions for reproducibility: requirements.lock
+fastapi==0.163.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.3
+numpy==2.5.4
+mediapipe==1.2.3            # brings opencv-contrib-python (cv2)
+torch==2.15.0               # CPU works; CUDA used automatically when available
+# training / data preparation only
+pandas==3.1.1
+remotezip==0.12.6
+# tests
+pytest==9.2.0
+httpx==0.28.1
+piper-tts==1.8.0

@@ -1,0 +1,1817 @@
+# SIGNBRIDGE — MASTER IMPLEMENTATION PROMPT
+
+## ROLE AND MISSION
+
+You are a senior full-stack engineer, machine learning engineer, computer vision researcher, and technical product designer.
+
+Your task is to autonomously build a complete, functional, polished hackathon project called **SignBridge**.
+
+SignBridge is a real-time American Sign Language (ASL) recognition and English speech generation application designed to run alongside video conferencing software such as Google Meet, Zoom, and Microsoft Teams.
+
+The product concept is similar to Granola's unobtrusive meeting companion experience, except SignBridge focuses on recognizing a person signing during a video call, producing English captions, and speaking the interpreted text aloud.
+
+You have approximately **24 hours of total development time**.
+
+Your highest priority is to deliver a reliable, demonstrable, end-to-end application, NOT a research prototype with disconnected components.
+
+**Important: You must write actual working code, install dependencies, run tests, debug failures, and deliver a runnable application. Do not stop after producing an architecture document or a list of recommendations.**
+
+Work autonomously. Make reasonable engineering decisions without repeatedly asking me for approval. Ask only when you encounter a genuinely blocking issue requiring credentials, unavailable data, or an irreversible decision.
+
+---
+
+# 1. PROJECT REQUIREMENTS
+
+## 1.1 Primary user experience
+
+A user opens SignBridge in their browser.
+
+They see a clean, modern interface with a prominent "Start Interpreting" button.
+
+The user can choose one of two video sources:
+
+1. **Webcam Mode:** Capture a local webcam using `navigator.mediaDevices.getUserMedia()`.
+2. **Meeting Mode:** Capture a selected browser tab, application window, or display using `navigator.mediaDevices.getDisplayMedia()`.
+
+In Meeting Mode, the user can select a Google Meet, Zoom, or Microsoft Teams window containing a person signing.
+
+The application analyzes the video, recognizes supported ASL signs or expressions, converts recognized sequences into English captions, and optionally speaks those captions using text-to-speech.
+
+The user can see:
+
+- Live video preview.
+- Detected hand and body landmarks.
+- Recognition status.
+- Recognized signs.
+- English captions.
+- Translation history.
+- Confidence estimates where meaningful.
+- Audio playback status.
+- Video capture status.
+- Current processing latency.
+- Supported vocabulary.
+
+The application must continue operating without refreshing the page.
+
+## 1.2 Important scope limitation
+
+SignBridge is a hackathon MVP.
+
+Do not claim that the application can translate arbitrary continuous ASL unless the actual implemented model supports and demonstrates that capability.
+
+ASL is a complete natural language with its own grammar, facial expressions, spatial structures, and linguistic conventions.
+
+A classifier trained on isolated signs does not constitute a full ASL translator.
+
+For the MVP, implement a reliable, explicitly limited vocabulary of genuine ASL signs or short expressions, with architecture that can later support continuous recognition.
+
+Do not silently substitute arbitrary hand gestures for ASL.
+
+The UI should describe its capabilities accurately, using language such as:
+
+"Live ASL recognition — supported vocabulary"
+
+The product vision may be described as real-time ASL interpretation, but the implemented MVP must be transparent about its limitations.
+
+---
+
+# 2. SUCCESS CRITERIA
+
+The application is successful when all of the following work:
+
+1. Frontend and backend start successfully on Ubuntu Linux.
+2. The browser can capture a webcam.
+3. The browser can capture a selected meeting window or tab.
+4. Video frames reach the Python backend.
+5. The backend extracts useful visual features or performs model inference.
+6. At least a small set of genuine ASL signs can be recognized with reasonable reliability.
+7. Predictions appear as English text.
+8. Stable predictions trigger audible English speech.
+9. Duplicate predictions are suppressed.
+10. The UI displays recognition history.
+11. The application recovers gracefully from camera disconnects, capture cancellation, and backend failures.
+12. A repeatable demonstration can be performed in under three minutes.
+
+The application must not fabricate recognition results or display predetermined translations during live inference.
+
+A separate, clearly labeled simulated demo mode is permitted as a fallback.
+
+---
+
+# 3. ENGINEERING PRIORITIES
+
+Use the following strict priority order.
+
+## P0 — Essential
+
+- Working frontend.
+- Working backend.
+- Webcam capture.
+- Meeting-window capture.
+- Video frame transport.
+- Genuine sign recognition for a constrained vocabulary.
+- Live captions.
+- Text-to-speech.
+- Start/stop controls.
+- Basic error handling.
+- Reliable local launch.
+
+## P1 — Important
+
+- Temporal prediction smoothing.
+- Duplicate suppression.
+- Confidence display.
+- Landmark visualization.
+- Recognition history.
+- Polished UI.
+- Basic automated tests.
+- Model performance metrics.
+
+## P2 — Optional
+
+- GPU inference.
+- Model switching.
+- SQLite persistence.
+- Downloadable transcript.
+- Additional supported signs.
+- Performance dashboard.
+- Dark/light theme.
+
+## P3 — Stretch goals
+
+- Continuous sentence interpretation.
+- Fingerspelling.
+- Speaker/signing participant selection.
+- Automatic meeting integration.
+- Virtual microphone output.
+- Multi-person tracking.
+- Cloud deployment.
+- User-trained custom signs.
+
+Do not implement P2 or P3 features until P0 works end-to-end.
+
+---
+
+# 4. REQUIRED TECHNOLOGY STACK
+
+## Frontend
+
+Use:
+
+- React.
+- TypeScript.
+- Vite.
+- Tailwind CSS.
+- Lucide React.
+- Browser MediaDevices APIs.
+- Browser Web Speech API.
+- WebSocket communication.
+
+Prefer native browser APIs over unnecessary dependencies.
+
+## Backend
+
+Use:
+
+- Python 3.11 or compatible stable version.
+- FastAPI.
+- Uvicorn.
+- Pydantic.
+- OpenCV.
+- NumPy.
+- MediaPipe, if compatible with the environment.
+- PyTorch or ONNX Runtime only when required by the selected model.
+
+Use SQLite only if it can be implemented without delaying the core application.
+
+## Hardware
+
+Development machine:
+
+- Ubuntu Linux.
+- NVIDIA GPU available.
+- Modern multicore CPU.
+
+Check whether CUDA is installed and whether PyTorch can use the GPU.
+
+However, CPU-only inference must remain possible.
+
+Do not make GPU support a prerequisite for launching the application.
+
+## Dependencies
+
+Use current stable package versions that are mutually compatible.
+
+Do not blindly install the latest version of every package.
+
+Check Python, MediaPipe, PyTorch, and CUDA compatibility before selecting versions.
+
+Use a Python virtual environment.
+
+Provide a reproducible dependency file and lockfile where practical.
+
+---
+
+# 5. MODEL RESEARCH AND SELECTION
+
+This is the most important technical decision.
+
+Before implementing the recognition engine, investigate the feasibility of using existing pretrained ASL recognition models.
+
+## 5.1 Research objectives
+
+Determine whether a usable model exists that:
+
+- Recognizes actual ASL signs rather than generic gestures.
+- Can run locally.
+- Has downloadable pretrained weights.
+- Supports inference on ordinary webcam video.
+- Has a documented preprocessing pipeline.
+- Has a clearly defined vocabulary.
+- Can process temporal motion where required.
+- Has a license permitting hackathon use.
+- Can be integrated within the available time.
+
+Investigate relevant model families, repositories, and datasets, including:
+
+- WLASL.
+- MS-ASL.
+- ASL Citizen.
+- How2Sign.
+- MediaPipe-based sign recognition projects.
+- Landmark-based temporal classification models.
+- Available Hugging Face sign-language models.
+- ONNX-compatible recognition models.
+
+Do not assume that any dataset includes pretrained weights.
+
+Do not assume that an ASL alphabet classifier recognizes conversational ASL.
+
+Do not assume that models trained on one dataset will generalize to arbitrary signers or webcam conditions.
+
+## 5.2 Model selection criteria
+
+Evaluate candidates based on:
+
+1. Availability of pretrained weights.
+2. Ease of integration.
+3. Genuine ASL vocabulary coverage.
+4. Temporal modeling capability.
+5. Inference latency.
+6. Hardware requirements.
+7. Reproducibility.
+8. License.
+9. Expected generalization.
+10. Setup complexity.
+
+Choose the model with the highest probability of producing a working demo.
+
+A smaller model that works reliably is preferable to an ambitious model that cannot be integrated.
+
+## 5.3 Research time limit
+
+Spend no more than approximately 90 minutes investigating models before committing to an implementation strategy.
+
+If a promising pretrained model cannot be loaded and successfully tested on a sample video within that time, use the fallback architecture described below.
+
+Document the selection in:
+
+`docs/MODEL_DECISION.md`
+
+Include:
+
+- Models considered.
+- Sources.
+- Licenses.
+- Selected approach.
+- Limitations.
+- Supported vocabulary.
+- Evidence that inference actually works.
+
+Never invent model performance numbers.
+
+---
+
+# 6. FALLBACK ASL RECOGNITION ARCHITECTURE
+
+If a suitable pretrained model is unavailable, implement a landmark-based temporal recognition system.
+
+## 6.1 Landmark extraction
+
+Use MediaPipe to extract, where supported:
+
+- Left-hand landmarks.
+- Right-hand landmarks.
+- Upper-body pose landmarks.
+- Selected facial landmarks.
+
+Prefer MediaPipe Tasks APIs if they are the supported interface in the installed version.
+
+Use hand, pose, and facial information where practical because ASL meaning can depend on multiple articulators.
+
+At minimum, reliably extract both hands and relevant upper-body landmarks.
+
+If face landmark extraction significantly increases latency, make it configurable.
+
+## 6.2 Landmark normalization
+
+Normalize landmarks to reduce sensitivity to:
+
+- Camera resolution.
+- Signer position.
+- Distance from the camera.
+- Body size.
+- Moderate translation within the frame.
+
+Use a stable body-relative coordinate system where feasible.
+
+Preserve information about:
+
+- Relative hand positions.
+- Movement trajectories.
+- Hand orientation.
+- Distances between hands.
+- Hand-to-body relationships.
+
+Avoid normalizations that remove linguistically meaningful motion or spatial relationships.
+
+Represent missing landmarks explicitly rather than substituting arbitrary valid-looking coordinates.
+
+## 6.3 Temporal buffering
+
+Maintain a rolling buffer of landmark sequences.
+
+Example configuration:
+
+- Capture approximately 15 FPS initially.
+- Buffer approximately 1–2 seconds of observations.
+- Use configurable overlapping windows.
+- Run recognition at a lower frequency than frame acquisition if necessary.
+
+The exact sequence length must match the selected model or training configuration.
+
+Do not assume every ASL sign lasts the same amount of time.
+
+## 6.4 Temporal classifier
+
+If training a lightweight model, evaluate:
+
+- LSTM.
+- GRU.
+- Temporal convolutional network.
+- Small Transformer encoder.
+
+For a 24-hour hackathon, favor a lightweight GRU or temporal convolutional network unless evidence supports another approach.
+
+Input:
+
+`[batch_size, sequence_length, feature_dimension]`
+
+Output:
+
+`[batch_size, number_of_supported_classes]`
+
+Include an explicit unknown/no-sign class if the training data supports it.
+
+Use appropriate training and validation splits.
+
+Avoid leaking frames from the same recording across training and validation.
+
+Prefer signer-independent evaluation where the dataset permits.
+
+## 6.5 Vocabulary selection
+
+Start with a small, useful vocabulary.
+
+Candidate concepts include:
+
+- HELLO.
+- THANK YOU.
+- YES.
+- NO.
+- HELP.
+- PLEASE.
+- STOP.
+- AGAIN.
+- UNDERSTAND.
+- QUESTION.
+
+These are candidate labels, not guaranteed supported classes.
+
+Only enable a sign if:
+
+1. Genuine ASL examples are available.
+2. The implementation can process the required motion.
+3. The sign has been tested.
+4. Its recognition quality is acceptable for the demo.
+
+Do not assume these English labels uniquely identify a particular ASL sign across contexts.
+
+The actual supported vocabulary must be derived from the available dataset and model.
+
+If only three to five signs can be demonstrated reliably, that is acceptable.
+
+## 6.6 Dataset preparation
+
+If training is necessary:
+
+- Obtain a legally usable dataset.
+- Preserve original labels.
+- Record dataset provenance.
+- Verify label meanings.
+- Extract landmarks consistently.
+- Cache processed features.
+- Create train/validation/test splits.
+- Avoid recording-level leakage.
+- Train a small classifier.
+- Evaluate per-class performance.
+- Save model weights and metadata.
+
+Do not train on random synthetic landmarks and present the resulting classifier as genuine ASL recognition.
+
+Synthetic data may be used to test software plumbing but not to establish linguistic accuracy.
+
+If collecting a tiny custom dataset, explain that it is a signer-specific prototype and does not demonstrate generalization.
+
+## 6.7 Unknown-sign behavior
+
+The system must be able to decline to recognize a sign.
+
+When confidence is insufficient:
+
+- Do not invent a translation.
+- Do not speak a random word.
+- Show a neutral status such as "No supported sign recognized."
+- Continue processing subsequent frames.
+
+Use calibrated confidence thresholds where possible.
+
+If probabilities are uncalibrated, label them as model scores rather than reliable certainty estimates.
+
+---
+
+# 7. REAL-TIME VIDEO PIPELINE
+
+Implement the following architecture:
+
+Browser video source
+→ Frame capture
+→ Frame resizing/compression
+→ WebSocket transport
+→ Backend decoding
+→ Landmark extraction
+→ Temporal feature buffer
+→ ASL recognition
+→ Prediction stabilization
+→ Caption generation
+→ Browser text-to-speech
+
+## 7.1 Webcam capture
+
+Use:
+
+`navigator.mediaDevices.getUserMedia()`
+
+Request video permission when the user starts capture.
+
+Recommended initial constraints:
+
+- 640 × 480.
+- Approximately 15 FPS processing.
+- No microphone required.
+
+Display the captured stream in the UI.
+
+Provide clear camera permission errors.
+
+Stop all media tracks when the user stops interpretation.
+
+## 7.2 Meeting capture
+
+Use:
+
+`navigator.mediaDevices.getDisplayMedia()`
+
+Allow the user to select a tab, window, or screen.
+
+Do not attempt to bypass browser security restrictions.
+
+Do not assume the browser can silently capture arbitrary windows.
+
+Display the selected source in the preview.
+
+The application must explain that recognition works best when:
+
+- The signer is visible.
+- Both hands are in frame.
+- The signer occupies a reasonably large portion of the image.
+- Video quality is sufficient.
+- The selected conference layout keeps the signer visible.
+
+Screen capture may include multiple participants.
+
+For the MVP, support one visible signer at a time.
+
+If multiple people appear, explain the limitation.
+
+Do not claim automatic signer selection unless implemented.
+
+## 7.3 Frame acquisition
+
+Use a browser-side video processing loop.
+
+Prefer `requestVideoFrameCallback()` when supported.
+
+Provide a fallback scheduling mechanism.
+
+Throttle processing to a configurable FPS.
+
+Do not send every rendered frame if the backend cannot process them.
+
+Resize frames before transmission.
+
+Use JPEG or another practical compressed image representation.
+
+Do not use uncompressed full-resolution video frames over WebSockets.
+
+## 7.4 Backpressure
+
+Implement a bounded processing pipeline.
+
+Requirements:
+
+- At most one or a small bounded number of frames in flight.
+- Drop stale frames when overloaded.
+- Prioritize recent observations.
+- Avoid unbounded queues.
+- Prevent memory growth during long sessions.
+
+Report actual processed FPS and approximate processing latency.
+
+## 7.5 WebSocket connection
+
+Use a dedicated endpoint:
+
+`/ws/interpret`
+
+Implement connection lifecycle handling.
+
+Support:
+
+- Connected.
+- Disconnected.
+- Reconnecting.
+- Processing.
+- Error.
+
+Do not allow stale predictions from a previous session to appear in a new session.
+
+Use a session identifier and monotonically increasing frame sequence numbers.
+
+---
+
+# 8. BACKEND API CONTRACT
+
+Implement a documented message protocol.
+
+Use JSON messages for control events and predictions.
+
+Binary messages may be used for compressed video frames.
+
+Example client configuration:
+
+```json
+{
+  "type": "session.start",
+  "session_id": "generated-uuid",
+  "source": "webcam",
+  "target_fps": 15,
+  "enable_landmarks": true,
+  "enable_tts": true
+}
+```
+
+Example recognition response:
+
+```json
+{
+  "type": "recognition.result",
+  "session_id": "generated-uuid",
+  "sequence": 42,
+  "timestamp_ms": 123456,
+  "prediction": {
+    "label": "THANK_YOU",
+    "english": "Thank you.",
+    "score": 0.93,
+    "is_stable": true,
+    "is_unknown": false
+  },
+  "performance": {
+    "processing_ms": 38,
+    "processed_fps": 12.5
+  }
+}
+```
+
+The values above are examples of the protocol, not measured model performance.
+
+Include additional event types:
+
+- `session.started`
+- `session.stopped`
+- `recognition.partial`
+- `recognition.result`
+- `recognition.unknown`
+- `processing.status`
+- `error`
+
+Provide Pydantic schemas for server messages.
+
+Validate incoming configuration.
+
+Handle malformed frames safely.
+
+Set reasonable payload limits.
+
+Do not expose Python tracebacks to the frontend.
+
+---
+
+# 9. PREDICTION STABILIZATION
+
+A naïve classifier may output the same sign repeatedly for many consecutive frames.
+
+Do not immediately speak every raw prediction.
+
+Implement a prediction stabilization layer.
+
+## 9.1 Stability requirements
+
+A sign should only be emitted when:
+
+- Its model score exceeds a configurable threshold.
+- It remains consistent across sufficient observations.
+- It passes temporal stability checks.
+- It has not already been emitted for the same sign event.
+
+Use a sliding window, voting mechanism, hysteresis, or another appropriate strategy.
+
+## 9.2 Duplicate suppression
+
+Example:
+
+A person signs THANK YOU.
+
+The model recognizes THANK YOU across 12 overlapping windows.
+
+The application should produce one caption and one spoken phrase, not 12 repetitions.
+
+Allow repeated occurrences of the same sign after a meaningful separation or reset.
+
+Do not use a simple permanent deduplication rule that prevents a signer from repeating a word.
+
+## 9.3 Unknown and idle states
+
+Recognize when:
+
+- No signer is visible.
+- Hands are missing.
+- The signer is idle.
+- The model cannot confidently classify the current sequence.
+
+These states must not trigger spoken output.
+
+## 9.4 Caption generation
+
+For the MVP, use a verified mapping between supported ASL class labels and simple English glosses or phrases.
+
+Do not use an LLM to invent grammatical sentences from insufficient sign information.
+
+For example:
+
+`THANK_YOU` → "Thank you."
+
+`HELP` → "Help."
+
+A future natural-language generation layer can be introduced later.
+
+Keep recognition and language generation separate.
+
+---
+
+# 10. TEXT-TO-SPEECH
+
+Implement speech output in the browser using:
+
+`window.speechSynthesis`
+
+Use `SpeechSynthesisUtterance`.
+
+## Requirements
+
+- Speak stable recognition events.
+- Provide a mute/unmute toggle.
+- Provide a speech rate setting.
+- Provide a voice selector if supported.
+- Avoid overlapping speech.
+- Prevent repeated speech for duplicate recognition events.
+- Allow users to stop pending speech.
+- Handle unavailable voices gracefully.
+
+Use an English voice when available.
+
+Browser speech output must occur only after an appropriate user interaction or browser-permitted initialization.
+
+Do not assume browser speech synthesis works identically across all browsers.
+
+Provide a test speech button.
+
+Example test phrase:
+
+"SignBridge audio is ready."
+
+## Audio scope
+
+For this hackathon MVP, speech should play through the local computer's audio output.
+
+Do not attempt to route generated speech into Zoom or Google Meet as a microphone source.
+
+This is explicitly out of scope.
+
+Document that meeting participants will not automatically hear locally generated speech.
+
+---
+
+# 11. FRONTEND DESIGN
+
+The interface should feel like a modern, professional meeting companion.
+
+Design inspiration:
+
+- Granola.
+- Linear.
+- Notion.
+- Modern AI productivity tools.
+
+Do not copy another company's proprietary branding or exact interface.
+
+## 11.1 Visual direction
+
+Use:
+
+- Minimal design.
+- Clean typography.
+- Subtle borders.
+- Rounded corners.
+- Generous spacing.
+- Soft neutral backgrounds.
+- One restrained accent color.
+- Professional iconography.
+- Responsive layout.
+- Subtle animations.
+
+Avoid:
+
+- Generic hackathon dashboards.
+- Excessive gradients.
+- Unnecessary charts.
+- Dense technical controls on the main screen.
+- Distracting animations.
+
+## 11.2 Main application layout
+
+Create three main areas.
+
+### Header
+
+Include:
+
+- SignBridge logo.
+- Product name.
+- Connection status.
+- Settings button.
+- Help/about button.
+
+### Video panel
+
+Include:
+
+- Webcam or meeting preview.
+- Video source selector.
+- Start/stop button.
+- Landmark overlay toggle.
+- Camera permission status.
+- Processing indicator.
+- Source resolution.
+- Approximate FPS.
+
+### Interpretation panel
+
+Include:
+
+- Large current English caption.
+- Latest recognized sign.
+- Recognition status.
+- Confidence/model score.
+- Live interpretation history.
+- Speech enabled indicator.
+- Clear history button.
+
+The latest caption should be visually prominent.
+
+## 11.3 Recognition history
+
+Display events chronologically.
+
+Each event may contain:
+
+- Timestamp.
+- Recognized sign.
+- English translation.
+- Model score.
+- Speech status.
+
+Do not create a new history entry for every frame.
+
+Only stable recognized events should enter the history.
+
+## 11.4 Settings
+
+Include:
+
+- Video source.
+- Target processing FPS.
+- Recognition threshold.
+- Audio enabled.
+- Speech rate.
+- Voice selection.
+- Landmark visualization.
+- Clear session.
+
+Hide advanced model settings behind an expandable section.
+
+## 11.5 Empty states
+
+Create polished states for:
+
+- No camera selected.
+- Waiting for video.
+- No hands detected.
+- Waiting for recognizable signing.
+- Backend disconnected.
+- Unsupported browser.
+- Model unavailable.
+- Permission denied.
+
+Every error state should suggest a useful next action.
+
+## 11.6 Supported vocabulary panel
+
+Display the signs that the selected model actually supports.
+
+Do not populate this list with aspirational vocabulary.
+
+For each supported sign, optionally show:
+
+- Label.
+- English output.
+- Short description.
+- Demonstration guidance.
+- Validation status.
+
+---
+
+# 12. APPLICATION ARCHITECTURE
+
+Use a clean separation of concerns.
+
+Suggested repository structure:
+
+```text
+signbridge/
+├── README.md
+├── .gitignore
+├── .env.example
+├── Makefile
+├── scripts/
+│   ├── setup.sh
+│   ├── dev.sh
+│   ├── check_environment.py
+│   └── run_demo.sh
+│
+├── frontend/
+│   ├── package.json
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   ├── src/
+│   │   ├── main.tsx
+│   │   ├── App.tsx
+│   │   ├── components/
+│   │   │   ├── Header.tsx
+│   │   │   ├── VideoPreview.tsx
+│   │   │   ├── SourceSelector.tsx
+│   │   │   ├── InterpretationPanel.tsx
+│   │   │   ├── CaptionDisplay.tsx
+│   │   │   ├── HistoryPanel.tsx
+│   │   │   ├── SettingsPanel.tsx
+│   │   │   ├── StatusIndicator.tsx
+│   │   │   └── VocabularyPanel.tsx
+│   │   ├── hooks/
+│   │   │   ├── useVideoCapture.ts
+│   │   │   ├── useWebSocket.ts
+│   │   │   ├── useSpeechSynthesis.ts
+│   │   │   └── useInterpretation.ts
+│   │   ├── services/
+│   │   │   ├── videoTransport.ts
+│   │   │   └── api.ts
+│   │   ├── types/
+│   │   │   └── interpretation.ts
+│   │   └── styles/
+│   │       └── index.css
+│   └── tests/
+│
+├── backend/
+│   ├── requirements.txt
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── config.py
+│   │   ├── api/
+│   │   │   ├── routes.py
+│   │   │   └── websocket.py
+│   │   ├── vision/
+│   │   │   ├── landmarks.py
+│   │   │   ├── normalization.py
+│   │   │   └── temporal_buffer.py
+│   │   ├── recognition/
+│   │   │   ├── base.py
+│   │   │   ├── model_loader.py
+│   │   │   ├── inference.py
+│   │   │   ├── stabilizer.py
+│   │   │   └── vocabulary.py
+│   │   ├── services/
+│   │   │   └── interpretation.py
+│   │   └── schemas/
+│   │       └── messages.py
+│   ├── models/
+│   │   └── README.md
+│   ├── training/
+│   │   ├── prepare_data.py
+│   │   ├── train.py
+│   │   └── evaluate.py
+│   └── tests/
+│
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── MODEL_DECISION.md
+│   ├── LIMITATIONS.md
+│   ├── DEMO_GUIDE.md
+│   └── FUTURE_WORK.md
+│
+└── demo/
+    ├── README.md
+    └── sample_clips/
+```
+
+Adjust this structure if needed, but maintain clear boundaries.
+
+Do not overengineer.
+
+Avoid introducing microservices, message brokers, distributed databases, or cloud infrastructure.
+
+---
+
+# 13. BACKEND IMPLEMENTATION DETAILS
+
+## 13.1 FastAPI
+
+Implement:
+
+- `GET /health`
+- `GET /api/model`
+- `GET /api/vocabulary`
+- `WS /ws/interpret`
+
+`GET /health` should report basic service availability.
+
+`GET /api/model` should report:
+
+- Model name.
+- Model version.
+- Model loaded status.
+- Inference device.
+- Supported class count.
+- Recognition mode.
+- Relevant limitations.
+
+`GET /api/vocabulary` should return actual supported classes.
+
+## 13.2 Model abstraction
+
+Define a recognition interface.
+
+Example:
+
+```python
+class SignRecognizer:
+    def load(self) -> None:
+        ...
+
+    def predict(self, sequence):
+        ...
+
+    def get_vocabulary(self):
+        ...
+
+    def get_metadata(self):
+        ...
+```
+
+Create concrete implementations only as needed.
+
+Potential implementations:
+
+- PretrainedVideoRecognizer.
+- LandmarkTemporalRecognizer.
+- DemoRecognizer.
+
+The DemoRecognizer must be clearly labeled simulated and must never masquerade as real inference.
+
+## 13.3 Session isolation
+
+Each WebSocket session must maintain its own:
+
+- Temporal buffer.
+- Prediction stabilizer.
+- Frame sequence.
+- Recognition state.
+- Timing statistics.
+
+Do not share mutable session state between independent clients.
+
+## 13.4 Resource cleanup
+
+Release:
+
+- MediaPipe instances.
+- Buffers.
+- WebSocket session state.
+- Temporary resources.
+
+Ensure that stopping a session does not leave processing tasks running.
+
+## 13.5 Error handling
+
+Handle:
+
+- Invalid frame data.
+- Missing model weights.
+- Unsupported image formats.
+- MediaPipe failures.
+- CUDA unavailable.
+- Model inference exceptions.
+- Client disconnects.
+- Oversized messages.
+- Invalid configuration.
+
+Log useful debugging information.
+
+Keep the application responsive even when inference fails.
+
+---
+
+# 14. PERFORMANCE TARGETS
+
+Target:
+
+- 640 × 480 input video.
+- Approximately 10–15 processed FPS when feasible.
+- Responsive UI.
+- Bounded memory usage.
+- Stable inference.
+- Low caption latency.
+
+Do not claim a guaranteed sub-second translation latency.
+
+Temporal recognition inherently requires collecting a sequence of frames.
+
+Measure:
+
+- Frame acquisition time.
+- Network transport time.
+- Landmark extraction time.
+- Model inference time.
+- Stabilization delay.
+- End-to-end caption latency where measurable.
+
+Prioritize reliable output over maximum FPS.
+
+If necessary:
+
+- Lower input resolution.
+- Reduce processing FPS.
+- Disable expensive overlays.
+- Use a smaller model.
+- Reduce unnecessary frontend rerenders.
+
+Do not optimize prematurely.
+
+---
+
+# 15. PRIVACY AND ACCESSIBILITY
+
+## Privacy
+
+- Process video locally whenever possible.
+- Do not upload video to third-party services by default.
+- Do not record or save raw meeting video without explicit user action.
+- Do not log video frames.
+- Do not persist biometric landmark data by default.
+- Explain what information is processed.
+- Provide clear start/stop controls.
+
+## Accessibility
+
+- Support keyboard navigation.
+- Use readable font sizes.
+- Maintain sufficient contrast.
+- Do not rely solely on color for status.
+- Allow captions to remain visible when audio is muted.
+- Provide clear feedback when recognition is uncertain.
+
+## Responsible presentation
+
+Include a visible disclaimer in the About section:
+
+"SignBridge is an experimental ASL recognition prototype supporting a limited vocabulary. It is not a substitute for a qualified interpreter, particularly in medical, legal, emergency, or other high-stakes settings."
+
+Avoid presenting the system as equivalent to a human interpreter.
+
+---
+
+# 16. DEVELOPMENT PLAN — 24 HOURS
+
+Follow this schedule as a prioritization guide.
+
+## Phase 1 — Hours 0–2: Environment and model feasibility
+
+Tasks:
+
+1. Inspect the operating system.
+2. Check Python and Node versions.
+3. Check NVIDIA GPU availability.
+4. Create repository structure.
+5. Initialize frontend.
+6. Initialize backend.
+7. Investigate available pretrained ASL models.
+8. Select recognition approach.
+9. Verify model loading or establish fallback.
+10. Document model decision.
+
+Deliverable:
+
+- Frontend launches.
+- Backend launches.
+- Recognition strategy is selected.
+- At least one sample inference path is validated or clearly identified as blocked.
+
+## Phase 2 — Hours 2–5: Video capture and transport
+
+Tasks:
+
+1. Implement webcam capture.
+2. Implement meeting-window capture.
+3. Build video preview.
+4. Establish WebSocket connection.
+5. Send compressed frames.
+6. Decode frames on backend.
+7. Display connection state.
+8. Handle capture cancellation.
+9. Implement frame throttling.
+10. Implement bounded queues.
+
+Deliverable:
+
+Browser video reaches the Python backend reliably.
+
+## Phase 3 — Hours 5–10: Recognition engine
+
+Tasks:
+
+1. Implement landmark extraction.
+2. Implement normalization.
+3. Implement temporal buffering.
+4. Integrate selected model.
+5. Implement unknown-sign behavior.
+6. Implement vocabulary metadata.
+7. Validate inference on real samples.
+8. Measure performance.
+9. Fix preprocessing inconsistencies.
+
+If training is necessary, allocate this phase to preparing a very small supported vocabulary.
+
+Deliverable:
+
+Real sign examples produce actual model predictions.
+
+If no model achieves usable recognition by Hour 10, narrow the vocabulary and prioritize one or more reproducible sign demonstrations.
+
+Do not replace recognition with hardcoded outputs.
+
+## Phase 4 — Hours 10–13: Captions and audio
+
+Tasks:
+
+1. Implement prediction smoothing.
+2. Implement duplicate suppression.
+3. Implement stable caption events.
+4. Implement speech synthesis.
+5. Implement speech queue management.
+6. Implement mute/unmute.
+7. Implement interpretation history.
+8. Test repeated signs.
+
+Deliverable:
+
+Recognized signs produce captions and speech.
+
+## Phase 5 — Hours 13–17: UI polish
+
+Tasks:
+
+1. Refine layout.
+2. Improve typography.
+3. Add status indicators.
+4. Add landmark overlay.
+5. Add vocabulary panel.
+6. Add settings.
+7. Add error states.
+8. Make layout responsive.
+9. Improve loading states.
+
+Deliverable:
+
+A professional-looking application suitable for hackathon judging.
+
+## Phase 6 — Hours 17–20: Testing
+
+Tasks:
+
+1. Test webcam mode.
+2. Test meeting capture.
+3. Test backend restart.
+4. Test camera permission denial.
+5. Test repeated signs.
+6. Test unknown signs.
+7. Test text-to-speech.
+8. Test start/stop cycles.
+9. Test resource cleanup.
+10. Run automated tests.
+
+Deliverable:
+
+A reliable end-to-end workflow.
+
+## Phase 7 — Hours 20–22: Demo preparation
+
+Tasks:
+
+1. Create demo instructions.
+2. Prepare genuine ASL sample clips.
+3. Verify the clips are compatible with the selected model.
+4. Test a conference-call capture scenario.
+5. Test audio output.
+6. Prepare fallback demo mode.
+7. Document known limitations.
+
+Deliverable:
+
+A repeatable three-minute demo.
+
+## Phase 8 — Hours 22–24: Final stabilization
+
+Tasks:
+
+1. Fix critical bugs.
+2. Verify clean startup.
+3. Remove unused dependencies.
+4. Improve README.
+5. Run final smoke tests.
+6. Verify no hardcoded demo predictions appear in live mode.
+7. Record actual supported signs.
+8. Prepare final presentation notes.
+
+Do not add major features during the final two hours.
+
+---
+
+# 17. AUTOMATED TESTING
+
+## Backend tests
+
+Use Pytest.
+
+Test:
+
+- Health endpoint.
+- Model metadata endpoint.
+- Vocabulary endpoint.
+- Invalid input handling.
+- Landmark normalization.
+- Missing landmarks.
+- Temporal buffer length.
+- Temporal buffer reset.
+- Prediction stabilization.
+- Duplicate suppression.
+- Unknown-sign rejection.
+- Session isolation.
+- WebSocket disconnect cleanup.
+
+Use deterministic test fixtures.
+
+Mock model inference for software unit tests.
+
+Clearly distinguish mocked tests from real recognition validation.
+
+## Frontend tests
+
+Use Vitest and React Testing Library where appropriate.
+
+Test:
+
+- Source selection.
+- Start/stop state.
+- Caption rendering.
+- History updates.
+- Audio toggle.
+- Connection errors.
+- Settings changes.
+
+## Browser tests
+
+Use Playwright if feasible.
+
+Test:
+
+- Initial page load.
+- Navigation.
+- Settings.
+- Error states.
+- Simulated demo mode.
+
+Browser camera and screen-capture permissions may require manual testing.
+
+Document manual test procedures.
+
+## Model evaluation
+
+For the actual recognition model, report:
+
+- Supported classes.
+- Number of evaluation samples.
+- Overall accuracy where appropriate.
+- Per-class accuracy.
+- Confusion matrix if feasible.
+- Unknown-sign behavior.
+- Signer generalization limitations.
+
+Do not report evaluation accuracy on the same examples used for training as if it were held-out accuracy.
+
+Do not fabricate accuracy metrics.
+
+---
+
+# 18. FALLBACK STRATEGY
+
+Implement the following fallback hierarchy.
+
+## Fallback A — Pretrained model unavailable
+
+Use a small landmark-based classifier trained on genuine labeled examples.
+
+## Fallback B — Training cannot be completed
+
+Reduce vocabulary to the smallest set that can be genuinely validated.
+
+Prefer three working signs over twenty unreliable signs.
+
+## Fallback C — Webcam recognition is inconsistent
+
+Provide a real-inference demo using pre-recorded, appropriately licensed ASL video clips.
+
+The clips must pass through the same recognition pipeline.
+
+Do not substitute expected labels for model predictions.
+
+## Fallback D — Recognition model completely unavailable
+
+Provide a clearly labeled simulated mode demonstrating:
+
+- Video capture.
+- Frame transport.
+- Caption UI.
+- Speech output.
+- Session history.
+
+The simulated mode must visibly indicate that recognition is simulated.
+
+Do not claim the system successfully recognizes ASL in this mode.
+
+## Fallback E — Meeting capture fails
+
+Use webcam mode.
+
+Keep meeting capture implemented and document any browser limitations.
+
+## Fallback F — GPU unavailable
+
+Run CPU inference.
+
+Reduce resolution and processing rate if needed.
+
+---
+
+# 19. DEMONSTRATION MODE
+
+Provide two distinct modes.
+
+## Live Recognition
+
+Uses actual model inference.
+
+Displays actual predictions.
+
+Does not contain hardcoded expected results.
+
+## Simulated Pipeline Demo
+
+Used only when needed to demonstrate product behavior.
+
+Must display a visible:
+
+"SIMULATED DEMO"
+
+indicator.
+
+May use predetermined caption events to demonstrate the UI and speech pipeline.
+
+Must never be described as genuine ASL recognition.
+
+Keep the two modes separated in the implementation.
+
+---
+
+# 20. HACKATHON DEMO SCRIPT
+
+Create `docs/DEMO_GUIDE.md`.
+
+Prepare the following presentation structure.
+
+## 0:00–0:20 — Problem
+
+"Video conferencing has made remote communication easier, but accessibility barriers remain. SignBridge explores how computer vision can help bridge communication between ASL users and English-speaking participants."
+
+## 0:20–0:40 — Product introduction
+
+"SignBridge is a meeting companion that watches a selected video source, recognizes supported ASL signs, and converts them into English captions and spoken audio."
+
+## 0:40–1:10 — Start session
+
+Open SignBridge.
+
+Show the interface.
+
+Select webcam or meeting capture.
+
+Click Start Interpreting.
+
+Demonstrate the live video preview.
+
+## 1:10–1:50 — Live recognition
+
+Demonstrate several supported signs.
+
+Show:
+
+- Actual recognition output.
+- English captions.
+- Speech synthesis.
+- Interpretation history.
+
+Only demonstrate signs the model actually supports.
+
+## 1:50–2:15 — Meeting integration
+
+Show a Google Meet or other conference window being captured.
+
+Explain that SignBridge runs as a companion application.
+
+Demonstrate live capture or use a clearly identified real-inference recording.
+
+## 2:15–2:40 — Technical architecture
+
+Explain:
+
+- Browser capture.
+- WebSocket streaming.
+- Landmark extraction.
+- Temporal recognition.
+- Prediction stabilization.
+- English captions.
+- Speech synthesis.
+
+Emphasize the distinction between isolated sign recognition and full ASL interpretation.
+
+## 2:40–3:00 — Future vision
+
+Explain possible extensions:
+
+- Larger vocabulary.
+- Continuous ASL recognition.
+- Facial grammar interpretation.
+- Improved signer independence.
+- Meeting audio routing.
+- Real-time bidirectional accessibility features.
+
+Conclude with:
+
+"SignBridge is an early step toward more accessible video communication."
+
+---
+
+# 21. DOCUMENTATION REQUIREMENTS
+
+Create a useful README containing:
+
+## Overview
+
+Explain what SignBridge does.
+
+## Features
+
+List only implemented features.
+
+## Requirements
+
+Document:
+
+- Operating system.
+- Python version.
+- Node version.
+- Browser requirements.
+- Optional GPU support.
+
+## Installation
+
+Provide exact commands.
+
+## Running locally
+
+Provide exact commands.
+
+## Using webcam mode
+
+Provide step-by-step instructions.
+
+## Using meeting mode
+
+Provide step-by-step instructions.
+
+## Supported vocabulary
+
+List actual model-supported signs.
+
+## Model information
+
+Include model provenance and limitations.
+
+## Testing
+
+Provide exact test commands.
+
+## Troubleshooting
+
+Cover:
+
+- Camera permissions.
+- Screen capture permissions.
+- WebSocket connection.
+- Model loading.
+- CUDA issues.
+- MediaPipe installation.
+- Audio output.
+- Browser compatibility.
+
+## Limitations
+
+Explain:
+
+- Limited vocabulary.
+- Sensitivity to camera conditions.
+- Potential signer-specific performance.
+- Lack of general continuous ASL translation.
+- Local-only speech output.
+
+---
+
+# 22. LOCAL DEVELOPMENT COMMANDS
+
+Implement convenient startup commands.
+
+Prefer:
+
+```bash
+./scripts/setup.sh
+./scripts/dev.sh
+```
+
+The setup script should:
+
+1. Check prerequisites.
+2. Create a Python virtual environment.
+3. Install backend dependencies.
+4. Install frontend dependencies.
+5. Check model assets.
+6. Report missing optional components.
+7. Explain how to launch the app.
+
+The development script should:
+
+1. Start FastAPI.
+2. Start Vite.
+3. Display local URLs.
+4. Handle shutdown signals.
+5. Terminate child processes cleanly.
+
+Use localhost development ports such as:
+
+Frontend: `http://localhost:5173`
+
+Backend: `http://localhost:8000`
+
+Configure CORS appropriately for local development.
+
+Do not use unrestricted CORS unnecessarily.
+
+Do not expose the development server publicly by default.
+
+---
+
+# 23. ENGINEERING RULES
+
+Follow these rules throughout implementation.
+
+1. Write working code rather than pseudocode.
+2. Test each major subsystem before proceeding.
+3. Prefer simple architecture over abstraction-heavy architecture.
+4. Do not add unnecessary infrastructure.
+5. Do not fabricate model outputs.
+6. Do not fabricate benchmark results.
+7. Do not misrepresent generic gesture recognition as ASL translation.
+8. Do not silently substitute a simulated model.
+9. Do not introduce paid APIs unless absolutely necessary.
+10. Prefer local inference.
+11. Keep frontend and backend loosely coupled.
+12. Use typed interfaces.
+13. Use structured error handling.
+14. Clean up media resources.
+15. Avoid unbounded frame queues.
+16. Maintain a usable application throughout development.
+17. Keep a running record of completed tasks.
+18. Document blockers and workarounds.
+19. Prioritize hackathon reliability.
+20. Stop adding features when the core workflow is stable.
+
+---
+
+# 24. AUTONOMOUS EXECUTION INSTRUCTIONS
+
+Begin by inspecting the current directory and environment.
+
+Then:
+
+1. Create a concise implementation plan.
+2. Identify the critical path.
+3. Research and validate the model approach.
+4. Initialize the project.
+5. Implement video capture.
+6. Implement frame transport.
+7. Implement recognition.
+8. Implement captions.
+9. Implement speech.
+10. Integrate the complete pipeline.
+11. Test the application.
+12. Polish the UI.
+13. Prepare the demo.
+14. Document the result.
+
+Create a file:
+
+`PROGRESS.md`
+
+Maintain:
+
+- Current phase.
+- Completed tasks.
+- Next tasks.
+- Known blockers.
+- Tests passing.
+- Features actually working.
+- Remaining time-sensitive priorities.
+
+After every major phase:
+
+- Run relevant tests.
+- Fix blocking errors.
+- Update progress.
+- Continue automatically.
+
+Do not stop simply because one approach fails.
+
+If a dependency or model is incompatible, investigate an alternative and proceed.
+
+If model training takes too long, reduce scope.
+
+If a nonessential feature fails, defer it.
+
+Do not claim success without verifying functionality.
+
+---
+
+# 25. FINAL ACCEPTANCE TEST
+
+Before declaring completion, verify the following scenario.
+
+1. Start the application from a clean terminal.
+2. Open the frontend.
+3. Verify backend connection.
+4. Select webcam.
+5. Grant camera permission.
+6. Confirm video preview.
+7. Start interpretation.
+8. Present a supported ASL sign.
+9. Confirm a real model prediction.
+10. Confirm stable English caption.
+11. Confirm audible English speech.
+12. Confirm a single history event.
+13. Repeat the sign after an appropriate pause.
+14. Confirm a new event is emitted.
+15. Stop interpretation.
+16. Confirm camera resources are released.
+17. Switch to meeting capture.
+18. Select a window or tab.
+19. Confirm video capture.
+20. Verify recognition or document the exact limitation.
+21. Stop the application.
+22. Restart successfully.
+
+If any step fails, report it explicitly.
+
+Do not mark the project fully complete if the primary live recognition workflow has not been demonstrated.
+
+---
+
+# 26. FINAL DELIVERABLES
+
+At completion, provide:
+
+1. Complete source code.
+2. Working frontend.
+3. Working backend.
+4. Actual recognition implementation.
+5. Model weights or reproducible download instructions.
+6. Supported vocabulary.
+7. Installation instructions.
+8. Launch commands.
+9. Test results.
+10. Model evaluation results.
+11. Known limitations.
+12. Three-minute demo guide.
+13. Architecture documentation.
+14. Future improvement roadmap.
+
+Also provide a concise final status report containing:
+
+- What works.
+- What does not work.
+- Which signs are supported.
+- Whether inference is real or simulated.
+- Whether webcam capture works.
+- Whether meeting capture works.
+- Whether speech works.
+- How to run the demo.
+- What should be improved next.
+
+---
+
+# 27. MOST IMPORTANT FINAL INSTRUCTION
+
+Your goal is not to create the most ambitious ASL research system.
+
+Your goal is to create the strongest possible **working 24-hour hackathon submission**.
+
+The application should demonstrate a genuine, technically defensible recognition pipeline, a polished user experience, and a clear vision for accessible communication.
+
+Favor a small, reliable, honestly presented MVP over a large system with unverified capabilities.
+
+**Begin implementation now. Do not merely describe how to build SignBridge. Build it.**
