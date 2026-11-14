@@ -18,10 +18,30 @@ logger = logging.getLogger(__name__)
 UNKNOWN = "_UNKNOWN"
 
 
+def ensemble_members(weights: Path) -> list[Path]:
+    """`models/signgru_v2.pt` plus any `models/signgru_v2_s<N>.pt` seed siblings."""
+    weights = Path(weights)
+    return [weights] + sorted(weights.parent.glob(f"{weights.stem}_s[0-9]*.pt"))
+
+
+class _Ensemble:
+    """Averages member probabilities (members share labels and input format)."""
+
+    def __init__(self, models):
+        self.models = models
+
+    def __call__(self, x):
+        import torch
+
+        return torch.log(torch.stack([torch.softmax(m(x), -1) for m in self.models]).mean(0))
+
+
 class LandmarkTemporalRecognizer(SignRecognizer):
-    def __init__(self, weights: Path, eval_report: Path | None = None,
+    def __init__(self, weights: Path | list[Path], eval_report: Path | None = None,
                  device: str = "auto"):
-        self.weights = Path(weights)
+        members = [Path(w) for w in weights] if isinstance(weights, (list, tuple)) else [Path(weights)]
+        self.members = members
+        self.weights = members[0]
         self.eval_report = Path(eval_report) if eval_report else None
         self.requested_device = device
         self._model = None
@@ -57,13 +77,20 @@ class LandmarkTemporalRecognizer(SignRecognizer):
                 self._device = "cuda" if torch.cuda.is_available() else "cpu"
             else:
                 self._device = self.requested_device
-            ckpt = torch.load(self.weights, map_location="cpu", weights_only=False)
-            model = SignGRU(ckpt["feature_dim"], len(ckpt["labels"]),
-                            hidden=ckpt.get("hidden", 128), proj=ckpt.get("proj", 192))
-            model.load_state_dict(ckpt["state_dict"])
-            model.eval().to(self._device)
+            models, ckpt = [], None
+            for path in self.members:
+                c = torch.load(path, map_location="cpu", weights_only=False)
+                if ckpt is not None and c["labels"] != ckpt["labels"]:
+                    raise ValueError(f"{path.name}: labels differ from {self.weights.name}")
+                ckpt = ckpt or c
+                m = SignGRU(c["feature_dim"], len(c["labels"]),
+                            hidden=c.get("hidden", 128), proj=c.get("proj", 192))
+                m.load_state_dict(c["state_dict"])
+                models.append(m.eval().to(self._device))
+            model = models[0] if len(models) == 1 else _Ensemble(models)
             self._labels = list(ckpt["labels"])
             self._meta = {k: v for k, v in ckpt.items() if k != "state_dict"}
+            self._meta["ensemble_size"] = len(models)
             self._load_eval()
             self._model = model
             self._torch = torch
@@ -136,6 +163,8 @@ class LandmarkTemporalRecognizer(SignRecognizer):
         return {
             "name": "SignGRU landmark temporal classifier",
             "version": self._meta.get("version", "unknown"),
+            "ensemble_size": self._meta.get("ensemble_size", 1),
+            "recommended_threshold": self._eval.get("recommended_threshold", 0.7),
             "loaded": self.loaded,
             "load_error": self.load_error,
             "device": self._device,

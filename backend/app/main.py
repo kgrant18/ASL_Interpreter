@@ -15,7 +15,7 @@ from .api import meeting, routes, websocket  # noqa: E402
 from .config import settings  # noqa: E402
 from .meeting.service import MeetingOutput  # noqa: E402
 from .meeting.tts import PiperTTS  # noqa: E402
-from .recognition.inference import LandmarkTemporalRecognizer  # noqa: E402
+from .recognition.inference import LandmarkTemporalRecognizer, ensemble_members  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -24,7 +24,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 async def lifespan(app: FastAPI):
     rec = getattr(app.state, "recognizer", None)
     if rec is None:
-        rec = LandmarkTemporalRecognizer(settings.model_path, settings.eval_path, settings.device)
+        rec = LandmarkTemporalRecognizer(ensemble_members(settings.model_path),
+                                         settings.eval_path, settings.device)
         rec.load()
         app.state.recognizer = rec
     own_meeting = getattr(app.state, "meeting", None) is None

@@ -5,41 +5,43 @@ All numbers below are measured on **ASL Citizen test-split signers** that were n
 - Test clips: **566** from **11** signers
 - Central-window top-1 accuracy over all 25 classes (incl. unknown): **81.8%**
 - Central-window top-1 accuracy on target-sign clips only: **81.2%**
+- Models: signgru.pt (probabilities averaged)
+- Streaming replay pads each clip with 1500 ms of rest before and 1000 ms after (signer in frame, hands down), as in live use
 - Enable rule: validation-signer streaming recall >= 0.5 and precision >= 0.6 at threshold 0.7; manually disabled: GOOD
-- Enabled signs: **FINISH, FRIEND, HELLO, HELP, LEARN, LOVE, MEET, MORE, NAME, NO, PLEASE, SIGN, SORRY, STOP, UNDERSTAND, WAIT, WATER, WHERE, YES**
+- Enabled signs: **BYE, FINISH, FRIEND, HELLO, HELP, LEARN, LOVE, MEET, MORE, NAME, NO, PLEASE, SIGN, SORRY, STOP, UNDERSTAND, WAIT, WATER, WHERE, YES**
 
 ## Streaming replay (live code path, enabled signs only)
 
 Each test clip's landmarks are replayed frame-by-frame through the same buffer → model → stabilizer used by the server. A clip counts as correct when the *first* emitted caption is the right sign.
 
-- Correct first caption: **74.4%** of 234 enabled-sign clips
-- Clips of *other, unsupported* signs that triggered any caption: **9.1%** of 276
+- Correct first caption: **87.4%** of 246 enabled-sign clips
+- Clips of *other, unsupported* signs that triggered any caption: **9.8%** of 276
 
 | Sign | Enabled | Test clips | Central acc | Stream correct-first | Stream no caption | Stream wrong | Stream precision |
 |---|---|---|---|---|---|---|---|
 | AGAIN | no | 11 | 27% | – | – | – | – |
-| BYE | no | 12 | 100% | – | – | – | – |
-| FINISH | yes | 14 | 86% | 11/14 | 3 | 0 | 100% |
-| FRIEND | yes | 11 | 100% | 10/11 | 1 | 0 | 77% |
+| BYE | yes | 12 | 100% | 12/12 | 0 | 0 | 100% |
+| FINISH | yes | 14 | 86% | 13/14 | 1 | 0 | 100% |
+| FRIEND | yes | 11 | 100% | 11/11 | 0 | 0 | 79% |
 | GOOD | no | 12 | 17% | – | – | – | – |
-| HELLO | yes | 14 | 86% | 9/14 | 5 | 0 | 90% |
-| HELP | yes | 13 | 92% | 10/13 | 3 | 0 | 71% |
+| HELLO | yes | 14 | 86% | 13/14 | 1 | 0 | 87% |
+| HELP | yes | 13 | 92% | 11/13 | 2 | 0 | 73% |
 | LEARN | yes | 12 | 75% | 8/12 | 4 | 0 | 73% |
-| LOVE | yes | 12 | 75% | 9/12 | 2 | 1 | 100% |
-| MEET | yes | 10 | 90% | 8/10 | 2 | 0 | 100% |
-| MORE | yes | 12 | 100% | 10/12 | 2 | 0 | 100% |
-| NAME | yes | 14 | 71% | 8/14 | 6 | 0 | 80% |
+| LOVE | yes | 12 | 75% | 10/12 | 1 | 1 | 100% |
+| MEET | yes | 10 | 90% | 9/10 | 1 | 0 | 100% |
+| MORE | yes | 12 | 100% | 12/12 | 0 | 0 | 100% |
+| NAME | yes | 14 | 71% | 10/14 | 4 | 0 | 83% |
 | NICE | no | 12 | 75% | – | – | – | – |
-| NO | yes | 11 | 100% | 10/11 | 1 | 0 | 100% |
-| PLEASE | yes | 13 | 100% | 12/13 | 1 | 0 | 92% |
-| SIGN | yes | 12 | 67% | 7/12 | 3 | 2 | 64% |
+| NO | yes | 11 | 100% | 11/11 | 0 | 0 | 92% |
+| PLEASE | yes | 13 | 100% | 13/13 | 0 | 0 | 93% |
+| SIGN | yes | 12 | 67% | 8/12 | 2 | 2 | 67% |
 | SORRY | yes | 12 | 92% | 11/12 | 1 | 0 | 92% |
-| STOP | yes | 11 | 82% | 8/12 | 3 | 1 | 67% |
+| STOP | yes | 11 | 82% | 9/12 | 2 | 1 | 69% |
 | THANKYOU | no | 12 | 58% | – | – | – | – |
-| UNDERSTAND | yes | 14 | 100% | 10/14 | 4 | 0 | 71% |
-| WAIT | yes | 13 | 85% | 8/13 | 4 | 1 | 100% |
-| WATER | yes | 12 | 92% | 9/12 | 3 | 0 | 91% |
-| WHERE | yes | 13 | 92% | 10/13 | 3 | 0 | 100% |
-| YES | yes | 10 | 80% | 6/10 | 4 | 0 | 58% |
+| UNDERSTAND | yes | 14 | 100% | 13/14 | 1 | 0 | 76% |
+| WAIT | yes | 13 | 85% | 9/13 | 3 | 1 | 100% |
+| WATER | yes | 12 | 92% | 11/12 | 1 | 0 | 92% |
+| WHERE | yes | 13 | 92% | 12/13 | 1 | 0 | 100% |
+| YES | yes | 10 | 80% | 9/10 | 1 | 0 | 67% |
 
 Unknown-class clips correctly rejected (central window): 82% of 274.

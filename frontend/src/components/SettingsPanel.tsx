@@ -12,6 +12,7 @@ interface Props {
   speechSupported: boolean
   onTestSpeech: () => void
   onClearSession: () => void
+  recommendedThreshold?: number
 }
 
 function Row({ label, hint, children, htmlFor }: { label: string; hint?: string; children: React.ReactNode; htmlFor?: string }) {
@@ -104,7 +105,12 @@ export function SettingsPanel(p: Props) {
             {advanced && (
               <div className="mt-2 divide-y divide-line">
                 <Row label={`Recognition threshold · ${s.threshold.toFixed(2)}`} htmlFor="set-th" hint="Minimum model score before a sign can be captioned. Higher = fewer false captions, more missed signs.">
-                  <input id="set-th" type="range" min={0.4} max={0.95} step={0.05} value={s.threshold} onChange={(e) => p.onChange({ threshold: Number(e.target.value) })} />
+                  <input id="set-th" type="range" min={0.4} max={0.95} step={0.05} value={s.threshold} onChange={(e) => p.onChange({ threshold: Number(e.target.value), thresholdCustomized: true })} />
+                  {s.thresholdCustomized && p.recommendedThreshold !== undefined && (
+                    <button type="button" className="self-start text-xs underline" onClick={() => p.onChange({ threshold: p.recommendedThreshold, thresholdCustomized: false })}>
+                      Reset to model default ({p.recommendedThreshold.toFixed(2)})
+                    </button>
+                  )}
                 </Row>
                 <Row label={`Target processing FPS · ${s.targetFps}`} htmlFor="set-fps" hint="The model was trained at ~15 FPS. Lower this on slower machines.">
                   <input id="set-fps" type="range" min={5} max={20} step={1} value={s.targetFps} onChange={(e) => p.onChange({ targetFps: Number(e.target.value) })} />

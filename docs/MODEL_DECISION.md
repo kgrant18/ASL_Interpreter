@@ -42,7 +42,8 @@ No pretrained candidate could be loaded and verified on webcam-style input withi
 ## Evidence that inference works
 
 - Held-out **test** signers (566 clips, 11 people): **81.8 %** central-window top-1 accuracy over 25 classes.
-- **Streaming replay** feeds cached landmarks frame-by-frame through the live `LiveInterpretationSession` code. **74.4 %** of the 234 enabled-sign clips are captioned correctly first. Wrong first captions are rare (5 of 234); most failures are "no caption". 9.1 % of 276 unsupported-sign clips triggered some caption.
+- **Streaming replay** feeds cached landmarks frame-by-frame through the live `LiveInterpretationSession` code. Each clip is padded with 1.5 s of rest before the sign and 1 s after, so the replay starts the way a live session does. **87.4 %** of the 246 enabled-sign clips are captioned correctly first. Wrong first captions are rare (2.0 %); most failures are "no caption". 9.8 % of 276 unsupported-sign clips triggered some caption. The earlier unpadded replay gave 74.4 %; it undercounted because inference began only after the sign was nearly over.
+- **v2** (161 signs, 132 enabled, 5-seed ensemble, threshold 0.6): 65.6 % correct-first, 4.2 % wrong-first, 6.8 % false activation on the same test signers. See EVALUATION_v2.md.
 - **Live WebSocket replay** (`scripts/replay_clip.py`) sent JPEG frames of test-signer clips to the running server. Every enabled-sign clip tried (23 trials covering 15 different signs) was captioned with the right sign. A repeated sign produced two events after a pause, and unsupported signs were rejected.
 - **Browser end-to-end:** a canvas stream playing test clips went through the real UI. HELLO, PLEASE, WATER and HELLO each produced exactly one caption and history entry.
 

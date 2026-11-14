@@ -11,6 +11,13 @@
 - **Weakest enabled signs:** SIGN, YES and STOP have the lowest precision on test (58–67 %).
 - **Uncalibrated scores:** the scores shown are softmax model scores, not probabilities of being right.
 
+- v2 (161 signs, 132 enabled) has about 15 training clips per sign. On held-out signers its first caption is correct for 65.6 % of enabled-sign clips. Most misses are silence (30 %) rather than a wrong sign (4 %). Validation signers score higher (83 %), so v2 still has a signer-generalization gap that more data would close.
+- v3 (51 curated signs, 50 enabled) sits between v1 and v2: 78.7 % correct first caption on held-out signers. It is weaker than v1 on some shared signs (YES 5/10, WHERE 8/13, MEET 6/10 on test, against 9/10, 12/13 and 9/10 for v1). More signs mean less confidence per sign, and v1's level was not recovered.
+- v3 was trained without the excluded v2 look-alike signs as negatives. That raised confidence on HELLO, LEARN and MEET, but it means signs v3 doesn't know trigger a false caption more often than with the stricter variant (11 % vs 6 % on validation; 7.5 % on the test "other signs" pool).
+- A more confident model is not proven to be more consistent live. The offline benchmark did not predict v2's live finickiness, so v3 needs a live check too.
+- v2's enabled set was chosen on only 3–4 validation clips per sign, so some enabled signs will be weak and some disabled ones would actually work.
+- The streaming metrics pad each test clip with 1.5 s of rest before the sign and 1 s after, built from the signer's own pose. This mimics a signer who is already on camera. Before this change the replay began predicting only once the sign was nearly over. The v1 numbers were re-measured with the same padding.
+
 ## Capture
 - **One signer.** In gallery view, MediaPipe may pick any person or none. Pin or spotlight the signer.
 - **Meeting video quality:** compression, low resolution and a small tile reduce accuracy.

@@ -1,6 +1,6 @@
 PY := backend/.venv/bin/python
 
-.PHONY: setup dev test test-backend test-frontend build check train download landmarks fit evaluate demo
+.PHONY: setup dev test test-backend test-frontend build check train download landmarks fit evaluate train-v2 train-v3 demo
 
 setup:            ## install everything
 	./scripts/setup.sh
@@ -36,6 +36,18 @@ fit:
 
 evaluate:
 	cd backend && GLOG_minloglevel=2 .venv/bin/python -m training.evaluate
+
+train-v2:         ## 161-sign 5-model ensemble (~7k clips, ~4 GB, ~1.5 h); writes signgru_v2.* (run with SIGNBRIDGE_MODEL=v2)
+	cd backend && GLOG_minloglevel=2 .venv/bin/python -m training.download_clips --glosses training/target_glosses.txt --unknown 2000 --manifest manifest_v2.csv --workers 16
+	cd backend && GLOG_minloglevel=2 .venv/bin/python -m training.prepare_data --manifest manifest_v2.csv --workers 20
+	cd backend && .venv/bin/python -m training.train --manifest manifest_v2.csv --out models/signgru_v2.pt --hidden 192 --proj 256 --epochs 120 --steps 60
+	cd backend && for s in 1 2 3 4; do .venv/bin/python -m training.train --manifest manifest_v2.csv --out models/signgru_v2_s$$s.pt --hidden 192 --proj 256 --epochs 120 --steps 60 --seed $$s; done
+	cd backend && GLOG_minloglevel=2 .venv/bin/python -m training.evaluate --manifest manifest_v2.csv --weights models/signgru_v2.pt --ensemble --threshold 0.6 --eval-out models/signgru_v2_eval.json --doc-out ../docs/EVALUATION_v2.md
+
+train-v3:         ## 51-sign curated model from the v2 data (needs `make train-v2` data; ~6 min); run with SIGNBRIDGE_MODEL=v3
+	cd backend && .venv/bin/python -m training.subset_manifest training/target_glosses_v3.txt manifest_v3.csv
+	cd backend && .venv/bin/python -m training.train --manifest manifest_v3.csv --out models/signgru_v3.pt --hidden 192 --proj 256 --epochs 100 --steps 60
+	cd backend && GLOG_minloglevel=2 .venv/bin/python -m training.evaluate --manifest manifest_v3.csv --weights models/signgru_v3.pt --threshold 0.7 --eval-out models/signgru_v3_eval.json --doc-out ../docs/EVALUATION_v3.md
 
 demo:             ## real-inference replay of held-out test-signer clips (backend must be running)
 	./scripts/run_demo.sh

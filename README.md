@@ -82,9 +82,36 @@ Open **Send to meeting**, create the virtual microphone, optionally paste a Zoom
 
 ## Supported vocabulary
 
-**Enabled (19):** FINISH, FRIEND, HELLO, HELP, LEARN, LOVE, MEET, MORE, NAME, NO, PLEASE, SIGN, SORRY, STOP, UNDERSTAND, WAIT, WATER, WHERE, YES.
+**Enabled (20):** BYE, FINISH, FRIEND, HELLO, HELP, LEARN, LOVE, MEET, MORE, NAME, NO, PLEASE, SIGN, SORRY, STOP, UNDERSTAND, WAIT, WATER, WHERE, YES.
 
-**Trained but disabled (5):** AGAIN, BYE, GOOD, NICE, THANKYOU. They failed the validation gate, or for GOOD, failed on test. Everything else is rejected as "no supported sign".
+**Trained but disabled (4):** AGAIN, GOOD, NICE, THANKYOU. These failed the validation gate, or for GOOD, failed on test. Everything else is rejected as "no supported sign".
+
+### Larger vocabularies (opt-in)
+
+Pick a model with `SIGNBRIDGE_MODEL`:
+
+```bash
+SIGNBRIDGE_MODEL=v3 ./scripts/dev.sh
+```
+
+| | v1 (default) | v3 (curated) | v2 (largest) |
+|---|---|---|---|
+| Enabled signs | 20 | **50** | 132 |
+| Correct first caption | **87.4 %** | 78.7 % | 65.6 % |
+| Wrong first caption | 2.0 % | **1.3 %** | 4.2 % |
+| No caption (needs a repeat) | **10.6 %** | 20.0 % | 30.2 % |
+| Caption fired on an unsupported sign | 9.8 % | 7.5 % | **6.8 %** |
+| Train with | `make train` | `make train-v3` | `make train-v2` |
+
+All numbers are from the same 11 held-out test signers, replayed through the live pipeline with rest before and after each sign. Details: [v1](docs/EVALUATION.md), [v3](docs/EVALUATION_v3.md), [v2](docs/EVALUATION_v2.md).
+
+- **v1** is the most consistent on its 20 signs.
+- **v3** keeps v1's signs (except BYE, which failed its gate) and adds 31 meeting-oriented signs: YOU, KNOW, HAVE, SEE, TELL, SHOW, WORK, MEETING, INTERPRETER, DEAF, HEARING, TEACHER, FAMILY, TIME, LATER, MORNING, HOME, COMPUTER, COFFEE, FREE, BUSY, READY, NICE, OK, NOT, NOTHING, VOICE, WILL, HOW, WHAT, TALK. The signs were picked on validation signers only: 100 % validation recall, high confidence, no strong look-alike. The 31 new signs score 78.9 % on test.
+- **v2** covers the most signs but is the least consistent; a 5-model ensemble at threshold 0.6. `make train-v2` downloads ~4 GB and takes ~1.5 h; `make train-v3` reuses that data and takes ~6 min.
+
+On the 19 signs v1 and v3 share, v1 is still better (86.8 % vs 78.2 %). v3's losses are almost all "no caption", concentrated in YES, WHERE, MEET and FRIEND.
+
+Labels with a number, such as `WHAT2` or `DEAF1`, are specific ASL variants of that English word, as numbered in ASL Citizen.
 
 ## Model information
 
@@ -93,7 +120,7 @@ Open **Send to meeting**, create the virtual microphone, optionally paste a Zoom
 | Architecture | Per-frame features (151-D: two hands' body-relative wrist position, palm-normalized hand shape, and 9 upper-body/face points) → velocity concat → 2-layer bidirectional GRU → mean+max pooling → 25 classes (24 signs + explicit `_UNKNOWN`) |
 | Input | 24 time steps resampled **by time** over a 1.6 s window, so it doesn't depend on frame rate |
 | Data | ASL Citizen: 863 train/val clips (41 signers) plus about 700 "other sign" clips for the unknown class |
-| Held-out test | 566 clips from 11 unseen signers: **81.8 %** central-window top-1 accuracy; in streaming replay through the live code path, **74.4 %** of enabled-sign clips are captioned correctly first, and 9.1 % of unsupported-sign clips trigger a caption |
+| Held-out test | 566 clips from 11 unseen signers: **81.8 %** central-window top-1 accuracy; in streaming replay through the live code path, **87.4 %** of enabled-sign clips are captioned correctly first (clips padded with rest, as in live use), and 9.8 % of unsupported-sign clips trigger a caption |
 | Latency | ~35 ms backend processing per frame; ~50 ms median browser↔backend round trip (local) |
 
 Details: [docs/MODEL_DECISION.md](docs/MODEL_DECISION.md) and [docs/EVALUATION.md](docs/EVALUATION.md). Scores in the UI are **uncalibrated model scores**, not certainties.

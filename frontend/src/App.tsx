@@ -88,6 +88,9 @@ export default function App() {
           done = true
           setModel(m)
           setVocab(v)
+          // Follow the model's validated threshold unless the user picked their own.
+          const rt = m.recommended_threshold
+          if (typeof rt === 'number') setSettings((s) => (s.thresholdCustomized || s.threshold === rt ? s : { ...s, threshold: rt }))
           setLoadError(m.loaded ? null : `Recognition model unavailable: ${m.load_error ?? 'not loaded'}. Train it (README → Model) or use Simulated Demo mode in Settings → Advanced.`)
         })
         .catch(() => setLoadError('Could not load model information from the backend.'))
@@ -200,6 +203,7 @@ export default function App() {
         voices={it.speech.voices}
         speechSupported={it.speech.supported}
         onTestSpeech={() => it.speech.speak('SignBridge audio is ready.', undefined, true)}
+        recommendedThreshold={model?.recommended_threshold}
         onClearSession={() => {
           it.clearHistory()
           it.speech.cancel()

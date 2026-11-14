@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../src/App'
 import { composePhrase } from '../src/lib/phrase'
-import { FakeWebSocket, meeting } from './setup'
+import { FakeWebSocket, meeting, modelInfo } from './setup'
 
 const sock = () => FakeWebSocket.instances[FakeWebSocket.instances.length - 1]
 
@@ -43,6 +43,27 @@ beforeEach(() => {
   FakeWebSocket.instances = []
   localStorage.clear()
   meeting.reset()
+  modelInfo.recommended = undefined
+})
+
+describe('model-recommended threshold', () => {
+  it('uses the model threshold unless the user customized it', async () => {
+    modelInfo.recommended = 0.6
+    const user = await setup()
+    await screen.findByText('“Hello.”') // model + vocabulary loaded
+    const sid = await startSession(user)
+    const start = sock().json().find((x) => x.type === 'session.start' && x.session_id === sid)!
+    expect(start.threshold).toBe(0.6)
+  })
+
+  it('keeps a user-chosen threshold', async () => {
+    modelInfo.recommended = 0.6
+    localStorage.setItem('signbridge.settings.v1', JSON.stringify({ threshold: 0.85, thresholdCustomized: true }))
+    const user = await setup()
+    await screen.findByText('“Hello.”')
+    const sid = await startSession(user)
+    expect(sock().json().find((x) => x.type === 'session.start' && x.session_id === sid)!.threshold).toBe(0.85)
+  })
 })
 
 describe('composePhrase', () => {

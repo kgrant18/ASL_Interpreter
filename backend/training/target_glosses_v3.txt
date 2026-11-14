@@ -1,0 +1,9 @@
+# v3 curated vocabulary (51 signs), chosen on VALIDATION signers only:
+#  - all 20 v1 signs (confirmed reliable live)
+#  - + v2 signs with 100% validation streaming recall, high median confidence,
+#    no strong look-alike, one variant per English word, useful in meetings.
+# Every other ASL Citizen sign in manifest_v2 becomes a negative (_UNKNOWN) example.
+BYE FINISH FRIEND HELLO HELP LEARN LOVE MEET MORE NAME NO PLEASE SIGN SORRY STOP UNDERSTAND WAIT WATER WHERE YES
+YOU KNOW HAVE SEE TELL SHOW WORK MEETING INTERPRETER DEAF1 HEARING TEACHER FAMILY
+TIME LATER MORNING HOME COMPUTER COFFEE FREE BUSY READY NICE OK NOT NOTHING1
+VOICE WILL HOW1 WHAT2 TALK2

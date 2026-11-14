@@ -36,7 +36,7 @@ Beforehand, create the virtual microphone and select **SignBridge Virtual Microp
 - Browser capture → 640 px JPEG over a WebSocket, with at most one frame in flight
 - MediaPipe hands + pose → body-relative features → 1.6 s window → bidirectional GRU
 - Stabilizer (votes + hysteresis) → caption → speech
-- Trained on ASL Citizen; **81.8 % accuracy on 11 signers it never saw**
+- Trained on ASL Citizen; **87 % of signs captioned correctly on 11 signers it never saw** (20-sign model; the 50-sign model gets 79 %)
 - "This recognizes isolated signs, which is not the same as full ASL interpretation."
 
 **2:40–3:00 · Future**

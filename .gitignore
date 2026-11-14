@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+backend/.venv/
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Dataset & derived data — ASL Citizen license forbids redistribution
+backend/data/
+
+# Model artifacts (trained on ASL Citizen; keep local). MediaPipe models are re-downloadable.
+backend/models/*.pt
+backend/models/*_labels.json
+backend/models/piper/
+backend/models/mediapipe/
+
+# Local env
+.env
+*.log
+backend/models/*_eval.json

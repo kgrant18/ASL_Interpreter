@@ -49,6 +49,30 @@ MANUAL_DISABLE = {
 }
 
 
+# Live use: the signer is already in frame (resting) before a sign and lowers their
+# hands afterwards. ASL Citizen clips are cut tightly (~2 s), so without padding the
+# replay starts predicting only when the sign is nearly over. Pad each clip with
+# rest frames (signer's pose, no hands) built from the clip itself.
+REST_PRE_MS = 1500
+REST_POST_MS = 1000
+REST_STEP_MS = 67  # ~15 FPS, as captured live
+
+
+def with_rest(frames: list, pre_ms: int = REST_PRE_MS, post_ms: int = REST_POST_MS) -> list:
+    from dataclasses import replace
+    posed = [f for f in frames if f.pose is not None]
+    if not posed or (pre_ms <= 0 and post_ms <= 0):
+        return frames
+    first, last = posed[0], posed[-1]
+    pre = [replace(first, timestamp_ms=t, left_hand=None, right_hand=None)
+           for t in range(0, pre_ms, REST_STEP_MS)]
+    body = [replace(f, timestamp_ms=f.timestamp_ms + pre_ms) for f in frames]
+    end = body[-1].timestamp_ms
+    post = [replace(last, timestamp_ms=end + t, left_hand=None, right_hand=None)
+            for t in range(REST_STEP_MS, post_ms + 1, REST_STEP_MS)]
+    return pre + body + post
+
+
 class _NoExtractor:
     def close(self) -> None:
         pass
@@ -59,7 +83,7 @@ def streaming_replay(rec, videos: list[str]) -> list[list[str]]:
     settings = Settings()
     results = []
     for video in videos:
-        frames = unpack(np.load(LANDMARK_DIR / (Path(video).stem + ".npz")))
+        frames = with_rest(unpack(np.load(LANDMARK_DIR / (Path(video).stem + ".npz"))))
         cfg = SessionStart(type="session.start", session_id="evaluation-replay",
                            enable_landmarks=False, threshold=THRESHOLD)
         sess = LiveInterpretationSession(cfg, settings, rec, extractor_factory=_NoExtractor)
@@ -108,19 +132,29 @@ def streaming_stats(manifest: pd.DataFrame, emitted: list[list[str]], targets: l
 
 
 def main() -> int:
+    global THRESHOLD
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--manifest", default="manifest.csv")
     ap.add_argument("--weights", default=str(WEIGHTS))
     ap.add_argument("--eval-out", default=str(EVAL_OUT))
     ap.add_argument("--doc-out", default=str(DOC_OUT))
+    ap.add_argument("--ensemble", action="store_true",
+                    help="also load <weights stem>_s<N>.pt seed models and average them")
+    ap.add_argument("--device", default="cpu")
+    ap.add_argument("--threshold", type=float, default=THRESHOLD,
+                    help="stabilizer threshold; choose it on validation signers only")
     args = ap.parse_args()
+    THRESHOLD = args.threshold
     manifest_path = ROOT / "data" / "asl_citizen" / args.manifest
     manifest = pd.read_csv(manifest_path)
     manifest = manifest[manifest.video.map(
         lambda v: (LANDMARK_DIR / (Path(v).stem + ".npz")).exists())].reset_index(drop=True)
 
-    rec = LandmarkTemporalRecognizer(Path(args.weights), eval_report=None, device="cpu")
+    from app.recognition.inference import ensemble_members
+    members = ensemble_members(Path(args.weights)) if args.ensemble else [Path(args.weights)]
+    print("models:", [p.name for p in members])
+    rec = LandmarkTemporalRecognizer(members, eval_report=None, device=args.device)
     rec.load()
     if not rec.loaded:
         print("model failed to load:", rec.load_error)
@@ -144,7 +178,7 @@ def main() -> int:
     y = np.array([idx[c.label] for c in clips])
     import torch
     with torch.no_grad():
-        probs = torch.softmax(rec._model(torch.from_numpy(x)), -1).numpy()
+        probs = torch.softmax(rec._model(torch.from_numpy(x).to(rec._device)), -1).cpu().numpy()
     pred = probs.argmax(-1)
     conf = np.zeros((len(labels), len(labels)), int)
     for a, b in zip(y, pred):
@@ -174,6 +208,9 @@ def main() -> int:
                         f"precision >= {MIN_PRECISION} at threshold {THRESHOLD}; "
                         f"manually disabled: {', '.join(MANUAL_DISABLE) or 'none'}"),
         "manual_disable": MANUAL_DISABLE,
+        "recommended_threshold": THRESHOLD,
+        "ensemble": [p.name for p in members],
+        "replay": {"rest_pre_ms": REST_PRE_MS, "rest_post_ms": REST_POST_MS},
         "labels": labels,
         "test_clips": len(clips),
         "test_signers": int(test_m.participant.nunique()),
@@ -215,6 +252,9 @@ def write_markdown(r: dict, doc_out: Path = DOC_OUT) -> None:
         f"**{r['test_central_accuracy']:.1%}**",
         f"- Central-window top-1 accuracy on target-sign clips only: "
         f"**{r['test_central_accuracy_target_classes']:.1%}**",
+        f"- Models: {', '.join(r.get('ensemble', []))} (probabilities averaged)",
+        f"- Streaming replay pads each clip with {r['replay']['rest_pre_ms']} ms of rest before and "
+        f"{r['replay']['rest_post_ms']} ms after (signer in frame, hands down), as in live use",
         f"- Enable rule: {r['enable_rule']}",
         f"- Enabled signs: **{', '.join(r['enabled']) or 'none'}**",
         "",

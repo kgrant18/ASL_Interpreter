@@ -2,7 +2,7 @@
 
 **Current phase:** 9, meeting output + vocabulary expansion.
 - Meeting output is done.
-- v2 vocabulary: 161 signs, landmark extraction running. It is trained to separate weights and swapped in only if it passes held-out evaluation.
+- v2 vocabulary: done and improved. 161 signs trained, 132 enabled, using a 5-seed ensemble at threshold 0.6. Correct first caption on held-out signers rose from 54.6 % to 65.6 %. It is opt-in with `SIGNBRIDGE_MODEL=v2`; v1 (87.4 %) stays the default.
 
 ## Completed
 | Phase | Work |
@@ -15,6 +15,9 @@
 | 6 Testing | 38 backend + 13 frontend automated tests; streaming evaluation on held-out signers; WebSocket replay; browser E2E with real model output |
 | 7 Demo | `docs/DEMO_GUIDE.md`, `make demo` (real inference on held-out clips), clearly labeled simulated mode |
 | 8 Stabilize | Fixed the issues below; docs written |
+| 9b Vocabulary v2 | 6,938 ASL Citizen clips (161 signs + 2,000 other-sign clips); 5 min GPU training; held-out test: 71.2 % central acc (162 classes), 54.6 % streaming correct-first, 2.9 % wrong-first, 4.7 % false activation; `make train-v2`; `SIGNBRIDGE_MODEL` selector |
+| 9c v2 accuracy | Diagnosed that missing captions came from the replay harness (tight clips: inference started after the sign) and fixed it with rest padding. Stabilizer sweep showed the vote rule was not the bottleneck. 5-seed ensemble chosen at threshold 0.6 on validation, which beats the single model at 0.7 on every metric there. Server reads the recommended threshold per model, and the UI follows it unless the user changed it. Test results: 65.6 % correct-first (was 54.6 %), 4.2 % wrong, 6.8 % false activation, 132 signs. |
+| 9d v3 curated | Live testing showed v2 was finicky. Cause measured: low confidence headroom (correct sign scores ≥0.9 in 36 % of clips vs 69 % for v1), not sensitivity to framing/speed/handedness. Built v3: 51 signs picked on validation only, trained without excluded look-alikes as negatives (two variants compared on validation). Test: 78.7 % correct-first, 1.3 % wrong, 7.5 % false activation, 50 enabled. `SIGNBRIDGE_MODEL=v3`, `make train-v3`. v1 stays default. |
 | 9 Meeting output | Piper TTS → PipeWire virtual microphone; Zoom third-party caption API client; off-by-default master switch, LIVE badge, Ctrl+Shift+M stop, `[SignBridge]` prefix; phrase-after-pause send mode; typed messages; `scripts/virtual_mic.sh`; docs/MEETING_OUTPUT.md |
 
 ## Bugs found and fixed during verification
@@ -24,14 +27,16 @@
 - The vocabulary panel could show "Model unavailable" after a reconnect race. Loading now retries and has a loading state.
 - Status overlay was stale while the backend was down. It is cleared and shows "Paused".
 - The WebSocket accepted any web origin (CORS doesn't cover WS). An Origin allow-list was added.
+- Moving the project folder left `.gitignore` behind, so licensed data and weights would have been committed. It was restored into the repo, and a `git add -n .` dry run is clean.
 - Meeting output: items dropped by mute were never marked finished. Fixed, with a test.
 - Meeting output: the worker thread wasn't joined on shutdown, which crashed onnxruntime at exit ("terminate called…"). It is now joined.
 - `mediapipe` already ships `opencv-contrib-python`; a duplicate `opencv-python-headless` was removed.
 
 ## Tests passing
-- `make test-backend`: **52 passed** (14 new for meeting output: Zoom format/seq/retry, mute, refusals, origin) (mocked model, clearly separated from real evaluation)
-- `make test-frontend`: **20 passed** (7 new: off by default, per-sign, phrase, simulated never sent, mute shortcut, typed); `npm run build` and `tsc -b` are clean
-- `make evaluate`: test signers 81.8 % central accuracy, 74.4 % streaming correct-first, 9.1 % false activation on unsupported signs
+- `make test-backend`: **61 passed** (meeting output, ensemble averaging, label mismatch, replay padding, model selector) (mocked model, clearly separated from real evaluation)
+- `make test-frontend`: **22 passed** (meeting output, model-recommended threshold); `npm run build` and `tsc -b` are clean
+- `make evaluate` (v1): test signers 81.8 % central accuracy, 87.4 % streaming correct-first (padded replay), 9.8 % false activation
+- v2 ensemble: 74.0 % central accuracy over 162 classes, 65.6 % streaming correct-first, 6.8 % false activation
 
 ## Features actually working (verified)
 - Real ASL inference end to end over WebSocket and in the browser UI (held-out signer clips)
@@ -42,6 +47,7 @@
 - Virtual microphone: Piper speech played by the backend service is recorded back out of `signbridge_mic` (non-silent, correct timing). Synthesis takes ~0.2 s.
 
 ## Not yet verified (needs a person at the machine)
+- v3 live consistency. Offline numbers did not predict how v2 felt live.
 - Zoom actually showing our captions (needs a live meeting with a host token) and Zoom hearing the virtual mic.
 - Live webcam signing by a human. The agent's browser pane blocks camera access.
 - Capturing a real Meet/Zoom/Teams window. The pane blocks getDisplayMedia.

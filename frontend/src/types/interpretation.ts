@@ -124,6 +124,8 @@ export interface ModelInfo {
   supported_class_count?: number
   trained_class_count?: number
   window_seconds?: number
+  ensemble_size?: number
+  recommended_threshold?: number
   dataset?: string
   evaluation?: Record<string, unknown>
   limitations: string[]
@@ -147,6 +149,8 @@ export interface Settings {
   mode: RecognitionMode
   targetFps: number
   threshold: number
+  /** true once the user moves the threshold slider; otherwise follow the model's recommendation */
+  thresholdCustomized: boolean
   audioEnabled: boolean
   speechRate: number
   voiceURI: string | null
@@ -160,6 +164,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: 'live',
   targetFps: 15,
   threshold: 0.7,
+  thresholdCustomized: false,
   audioEnabled: true,
   speechRate: 1,
   voiceURI: null,

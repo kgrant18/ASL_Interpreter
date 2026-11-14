@@ -72,6 +72,8 @@ Object.defineProperty(window, 'speechSynthesis', {
 })
 
 // ---- fetch stub for /api/model and /api/vocabulary ----
+export const modelInfo = { recommended: undefined as number | undefined }
+
 // ---- fake meeting-output backend ----
 export const meeting = {
   sends: [] as { text: string; source: string; simulated: boolean }[],
@@ -113,7 +115,7 @@ vi.stubGlobal(
     const m = url.match(/\/api\/meeting(\/[a-z-]+)$/)
     if (m) return meetingResponse(m[1], init?.body ? JSON.parse(String(init.body)) : undefined) as Response
     const body = url.endsWith('/api/model')
-      ? { name: 'SignGRU', version: 't', loaded: true, device: 'cpu', mode: 'live', limitations: ['Limited vocabulary.'] }
+      ? { name: 'SignGRU', version: 't', loaded: true, device: 'cpu', mode: 'live', limitations: ['Limited vocabulary.'], recommended_threshold: modelInfo.recommended }
       : url.endsWith('/api/vocabulary')
         ? {
             supported: [{ label: 'HELLO', english: 'Hello.', description: 'Salute from forehead.', enabled: true, validation: 'ok', test_accuracy: 0.86, test_samples: 14 }],
