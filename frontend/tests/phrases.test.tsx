@@ -120,7 +120,7 @@ describe('local recorder route', () => {
     const user = userEvent.setup()
     window.location.hash = ''
     render(<Root />)
-    expect(await screen.findByText('SignBridge for Zoom')).toBeInTheDocument()   // default: Connect to Zoom
+    expect(await screen.findByRole('button', { name: /begin/i })).toBeInTheDocument()   // default: Welcome
     expect(screen.queryByRole('button', { name: /start camera/i })).not.toBeInTheDocument()
     await user.keyboard('{Control>}{Alt>}r{/Alt}{/Control}')
     expect(await screen.findByRole('button', { name: /start camera/i })).toBeInTheDocument()

@@ -198,7 +198,7 @@ export default function App() {
           {window.location.hash === '#/browser' && (
             <>
               {' · '}
-              <button type="button" className="underline hover:text-ink" onClick={() => { it.stop(); window.location.hash = '' }}>
+              <button type="button" className="underline hover:text-ink" onClick={() => { it.stop(); window.location.hash = '#/connect' }}>
                 Back to Connect to Zoom
               </button>
             </>

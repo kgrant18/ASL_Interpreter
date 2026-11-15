@@ -168,3 +168,54 @@ describe('Connect to Zoom page', () => {
     expect(text).not.toMatch(/\b(model|training|trained|record|recording|demo|personali[sz]ed)\b/i)
   })
 })
+
+describe('Welcome and Live screens', () => {
+  it('Welcome shows the wordmark, mission line and Begin opens Connect', async () => {
+    const { WelcomePage, WELCOME_LINE } = await import('../src/components/WelcomePage')
+    const user = userEvent.setup()
+    const onBegin = vi.fn()
+    render(<WelcomePage onBegin={onBegin} />)
+    expect(screen.getByRole('heading', { level: 1, name: 'SignBridge' })).toBeInTheDocument()
+    expect(screen.getByText(WELCOME_LINE)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /begin/i }))
+    expect(onBegin).toHaveBeenCalled()
+  })
+
+  it('Setup hides the status tiles and ticks off detected BlackHole', async () => {
+    render(<ConnectPage onUseBrowser={() => undefined} />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Connect to Zoom' })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Status' })).toHaveClass('sr-only')
+    expect(await screen.findByText(/BlackHole 2ch detected/)).toBeInTheDocument()
+  })
+
+  it('Live shows the last sent sentence large, hides unsent history, keeps phrases collapsed', async () => {
+    backend.state.capture.running = true
+    backend.state.capture.camera = { state: 'on', error: null, index: 0, width: 640, height: 480, fps: 15 }
+    backend.state.capture.recognition = { state: 'no_hands', hands_visible: 0, shoulders_visible: true, last_sign: null, pending: [] }
+    backend.state.meeting!.config.enabled = true
+    const now = Date.now() / 1000
+    backend.state.capture.history = [
+      { id: 'b', english: 'Thank you for listening.', glosses: ['THANKYOU'], score: 0.9, at: now, sent: true },
+      { id: 'x', english: 'Did I miss anything?', glosses: ['ME', 'MISS'], score: 0.9, at: now - 5, sent: false },
+      { id: 'a', english: 'I have an idea.', glosses: ['ME', 'HAVE', 'IDEA'], score: 0.9, at: now - 10, sent: true },
+    ]
+    render(<ConnectPage onUseBrowser={() => undefined} />)
+    const card = await screen.findByRole('region', { name: 'Last sent' })
+    expect(card).toHaveTextContent('Thank you for listening.')
+    expect(screen.getByRole('button', { name: /live in call/i })).toBeInTheDocument()
+    expect(screen.queryByText('Did I miss anything?')).not.toBeInTheDocument()
+    expect(screen.getByTitle('ME HAVE IDEA')).toHaveTextContent('I have an idea.')
+    expect(screen.getByLabelText('Framing: Framing good ✓')).toBeInTheDocument()
+    expect(screen.getByText('Supported phrases').closest('details')).not.toHaveAttribute('open')
+    expect(screen.getByLabelText(/Voice: Speaking into/)).toHaveTextContent(/Ready.*BlackHole 2ch/)
+  })
+
+  it('framing badge asks the signer to move back or step in', async () => {
+    const { framing } = await import('../src/components/ConnectPage')
+    const s = snapshot({ capture: { running: true, camera: { state: 'on', error: null, index: 0, width: 640, height: 480, fps: 15 }, recognition: { state: 'recognizing', hands_visible: 2, shoulders_visible: false, last_sign: null, pending: [] } } })
+    expect(framing(s)?.text).toBe('Move back a little')
+    s.capture.recognition.state = 'no_signer'
+    expect(framing(s)?.text).toBe('Step into frame')
+    expect(framing(snapshot())).toBeNull()
+  })
+})

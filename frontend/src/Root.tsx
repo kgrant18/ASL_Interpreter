@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react'
 import App from './App'
 import { ConnectPage } from './components/ConnectPage'
 import { RecordPage } from './components/RecordPage'
+import { WelcomePage } from './components/WelcomePage'
 import { backgroundApi } from './services/meetingApi'
 
 const RECORD_HASH = '#/record'
 export const BROWSER_HASH = '#/browser'
+export const CONNECT_HASH = '#/connect'
 
 /**
  * Routes:
- *   (default)   Connect to Zoom — the backend reads the camera, works while minimized
+ *   (default)   Welcome → Begin
+ *   #/connect   Connect to Zoom — the backend reads the camera, works while minimized
  *   #/browser   in-browser camera (fallback; needs the tab visible)
  *   #/record    local recorder (also Ctrl+Option+R)
  */
@@ -32,6 +35,7 @@ export default function Root() {
   }, [])
   if (hash === RECORD_HASH) return <RecordPage onExit={() => (window.location.hash = '')} />
   if (hash === BROWSER_HASH) return <App />
+  if (hash !== CONNECT_HASH) return <WelcomePage onBegin={() => (window.location.hash = CONNECT_HASH)} />
   return (
     <ConnectPage
       onUseBrowser={() => {
