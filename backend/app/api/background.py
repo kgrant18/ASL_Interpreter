@@ -85,3 +85,11 @@ def preview(request: Request) -> Response:
     if jpg is None:
         raise HTTPException(404, "camera is off")
     return Response(jpg, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/landmarks")
+def landmarks(request: Request) -> dict:
+    """Latest landmarks for the framing overlay (read-only; same privacy rule as the preview)."""
+    if request.headers.get("sec-fetch-site") == "cross-site":
+        raise HTTPException(403, "not allowed")
+    return {"landmarks": _bg(request).landmarks()}

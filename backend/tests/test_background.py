@@ -339,3 +339,15 @@ def test_preview_refused_to_other_websites(api):
     c, *_ = api
     assert c.get("/api/background/preview.jpg", headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
     assert c.get("/api/background/preview.jpg").status_code == 404   # camera off
+
+
+def test_landmarks_endpoint_for_framing_overlay(api):
+    c, svc, bg, cams, zoom = api
+    assert c.get("/api/background/landmarks").json() == {"landmarks": None}      # not running
+    assert c.get("/api/background/landmarks", headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
+    c.post("/api/background/start", headers=UI)
+    c.post("/api/meeting/mute", headers=UI)
+    assert wait_for(lambda: c.get("/api/background/landmarks").json()["landmarks"] is not None)
+    lm = c.get("/api/background/landmarks").json()["landmarks"]
+    assert len(lm["pose"]) == 25 and len(lm["pose"][11]) == 3          # x, y, visibility
+    assert 0.0 <= lm["pose"][11][0] <= 1.0 and lm["width"] == 640

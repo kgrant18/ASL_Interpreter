@@ -138,6 +138,27 @@ class BackgroundRecognizer:
         ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 70])
         return buf.tobytes() if ok else None
 
+    def landmarks(self) -> dict | None:
+        """Latest landmarks for the framing overlay (display only), in normalized [0,1]
+        image coordinates of the unmirrored frame. Pose points carry visibility."""
+        last = self._last if self.running else None
+        if last is None:
+            return None
+        _, lm = last
+        aspect = lm.width / lm.height if lm.height else 1.0
+
+        def pts(a, vis: bool = False):
+            if a is None:
+                return None
+            if vis:
+                return [[round(float(p[0] / aspect), 4), round(float(p[1]), 4), round(float(p[3]), 3)]
+                        for p in a]
+            return [[round(float(p[0] / aspect), 4), round(float(p[1]), 4)] for p in a]
+
+        return {"timestamp_ms": lm.timestamp_ms, "width": lm.width, "height": lm.height,
+                "pose": pts(lm.pose[:25], vis=True) if lm.pose is not None else None,
+                "left_hand": pts(lm.left_hand), "right_hand": pts(lm.right_hand)}
+
     # ---- control ----
     @property
     def running(self) -> bool:

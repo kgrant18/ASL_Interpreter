@@ -1,5 +1,8 @@
 import { AlertTriangle, Camera, Captions, Check, CheckCircle2, ChevronDown, CircleHelp, Hand, Loader2, Mic, Pause, PictureInPicture2, Play, Radio, Send, Square } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCameraPreview } from '../hooks/useCameraPreview'
+import { useLandmarkStream } from '../hooks/useLandmarkStream'
+import { drawSkeleton, type Landmarks } from '../lib/skeleton'
 import { useCaptionBubble } from '../hooks/useCaptionBubble'
 import { BACKEND_URL, fetchVocabulary } from '../services/api'
 import { backgroundApi, meetingApi, type BackgroundStatus, type PhraseEvent } from '../services/meetingApi'
@@ -187,14 +190,92 @@ function FramingBadge({ f }: { f: Framing }) {
   )
 }
 
-function Preview({ tick, f }: { tick: number; f: Framing }) {
+const SKELETON_KEY = 'signbridge.preview.skeleton'
+
+function loadSkeletonPref(): boolean {
+  try {
+    return localStorage.getItem(SKELETON_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+/**
+ * Canvas layered exactly over the preview video (inside the same mirrored layer), drawing
+ * the backend's latest landmarks mapped through the video's resolution, aspect ratio and
+ * object-cover crop. Display only.
+ */
+function SkeletonCanvas({ lm, videoRef }: { lm: Landmarks | null; videoRef: React.RefObject<HTMLVideoElement | null> }) {
+  const ref = useRef<HTMLCanvasElement | null>(null)
+  const [box, setBox] = useState({ w: 0, h: 0 })
+
+  useEffect(() => {
+    const c = ref.current
+    if (!c) return
+    const measure = () => setBox({ w: c.clientWidth, h: c.clientHeight })
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(c)
+    return () => ro.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const c = ref.current
+    const v = videoRef.current
+    const ctx = c?.getContext('2d')
+    if (!c || !ctx || !box.w || !box.h) return
+    const dpr = window.devicePixelRatio || 1
+    if (c.width !== Math.round(box.w * dpr)) c.width = Math.round(box.w * dpr)
+    if (c.height !== Math.round(box.h * dpr)) c.height = Math.round(box.h * dpr)
+    drawSkeleton(ctx, lm, { w: v?.videoWidth ?? 0, h: v?.videoHeight ?? 0 }, box, dpr)
+  }, [lm, box, videoRef])
+
+  return <canvas ref={ref} aria-hidden data-testid="skeleton" className="pointer-events-none absolute inset-0 h-full w-full" />
+}
+
+/**
+ * Position check: smooth video from the browser's own camera (display only; recognition
+ * keeps using the backend camera), with an optional skeleton overlay from the backend's
+ * landmarks. Falls back to the backend's 1-second snapshot (skeleton already drawn in)
+ * when the browser can't open the camera. The pill comes from backend detection.
+ */
+function PositionCheck({ tick, f, cameraIndex, heading = false }: { tick: number; f: Framing; cameraIndex: number; heading?: boolean }) {
+  const { videoRef, state } = useCameraPreview(true, cameraIndex)
+  const smooth = state === 'live'
+  const [skeleton, setSkeleton] = useState(loadSkeletonPref)
+  const lm = useLandmarkStream(smooth && skeleton)
+  const toggle = () =>
+    setSkeleton((on) => {
+      try {
+        localStorage.setItem(SKELETON_KEY, on ? '0' : '1')
+      } catch {
+        /* ignore */
+      }
+      return !on
+    })
   return (
-    <div className="flex flex-col items-start gap-4 sm:flex-row">
-      <img src={`${BACKEND_URL}/api/background/preview.jpg?t=${tick}`} alt="Camera view with hand and shoulder tracking" className="w-full max-w-[280px] rounded-xl bg-canvas" />
-      <div className="space-y-2">
+    <div className="space-y-3">
+      {heading && <h2 className={H2}>Position check</h2>}
+      <div>
         <FramingBadge f={f} />
-        <p className="text-sm text-muted">Head, both shoulders and both hands in view, about an arm's length from the camera.</p>
       </div>
+      <p className="text-sm text-muted">Head, both shoulders and both hands in view, about an arm's length from the camera.</p>
+      <div className="relative aspect-[4/3] w-full max-w-[640px] overflow-hidden rounded-xl bg-canvas" title="Camera view">
+        <div className={`absolute inset-0 -scale-x-100 ${smooth ? '' : 'hidden'}`}>
+          <video ref={videoRef} muted playsInline aria-hidden={!smooth} className="h-full w-full object-cover" />
+          {smooth && skeleton && <SkeletonCanvas lm={lm} videoRef={videoRef} />}
+        </div>
+        {!smooth && state !== 'idle' && state !== 'starting' && (
+          <img src={`${BACKEND_URL}/api/background/preview.jpg?t=${tick}`} alt="Camera view" className="h-full w-full object-cover" />
+        )}
+      </div>
+      {smooth && (
+        <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted">
+          <input type="checkbox" checked={skeleton} onChange={toggle} className="accent-[var(--color-accent)]" />
+          Show skeleton
+        </label>
+      )}
     </div>
   )
 }
@@ -375,6 +456,7 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
   const micOk = !!status?.meeting?.virtual_mic.active
   const device = status?.meeting?.virtual_mic.device_name ?? 'BlackHole 2ch'
   const cameraOn = status?.capture.camera.state === 'on'
+  const cameraIndex = status?.capture.camera.index ?? 0
 
   const start = () =>
     run('start', async () => {
@@ -393,8 +475,8 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
     <div className="mx-auto flex min-h-screen max-w-[880px] flex-col">
       <header className="flex items-center justify-between gap-4 px-5 py-4 sm:px-8">
         <div className="flex items-center gap-2.5">
-          <Logo className="h-6 w-6" />
-          <span className="text-[15px] font-semibold tracking-tight">SignBridge</span>
+          <Logo className="h-[31px] w-[31px]" />
+          <span className="text-[19px] font-semibold tracking-tight">SignBridge</span>
         </div>
         <div className="flex items-center gap-2">
           {live && sending && (
@@ -505,10 +587,10 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
                   {zoomConnected && !captionsTested && z?.last_error && <p className="mt-2 text-danger">{z.last_error}</p>}
                 </Step>
 
-                <Step n={3} done={frame?.tone === 'ok'} warn={frame?.tone === 'warn'} title={frame?.tone === 'ok' ? 'Framing good' : 'Framing'}>
+                <Step n={3} done={frame?.tone === 'ok'} warn={frame?.tone === 'warn'} title={frame?.tone === 'ok' ? 'Position check: framing good' : 'Position check'}>
                   {running && cameraOn ? (
                     <div className="mt-2">
-                      <Preview tick={tick} f={frame} />
+                      <PositionCheck tick={tick} f={frame} cameraIndex={cameraIndex} />
                     </div>
                   ) : running ? (
                     <p className={ind.camera.tone === 'bad' ? 'text-danger' : ''}>{ind.camera.detail ?? 'Opening the camera…'}</p>
@@ -582,8 +664,8 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
             )}
 
             {cameraOn && (
-              <section aria-label="Camera view" className={CARD}>
-                <Preview tick={tick} f={frame} />
+              <section aria-label="Position check" className={CARD}>
+                <PositionCheck tick={tick} f={frame} cameraIndex={cameraIndex} heading />
               </section>
             )}
 

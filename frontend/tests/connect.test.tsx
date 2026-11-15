@@ -219,3 +219,29 @@ describe('Welcome and Live screens', () => {
     expect(framing(snapshot())).toBeNull()
   })
 })
+
+describe('Live framing view', () => {
+  function goLive() {
+    backend.state.capture.running = true
+    backend.state.capture.camera = { state: 'on', error: null, index: 0, width: 640, height: 480, fps: 15 }
+    backend.state.capture.recognition = { state: 'no_hands', hands_visible: 0, shoulders_visible: true, last_sign: null, pending: [] }
+    backend.state.meeting!.config.enabled = true
+  }
+
+  it('uses the smooth browser stream, falling back to backend snapshots if the camera is busy', async () => {
+    goLive()
+    const gum = navigator.mediaDevices.getUserMedia as unknown as ReturnType<typeof vi.fn>
+    gum.mockRejectedValueOnce(new DOMException('busy', 'NotReadableError'))
+    render(<ConnectPage onUseBrowser={() => undefined} />)
+    const img = await screen.findByRole('img', { name: 'Camera view' })
+    expect(img.getAttribute('src')).toMatch(/\/api\/background\/preview\.jpg/)
+  })
+
+  it('shows the Position check card at full size and never shrinks it', async () => {
+    goLive()
+    render(<ConnectPage onUseBrowser={() => undefined} />)
+    const card = await screen.findByRole('region', { name: 'Position check' })
+    expect(card).toHaveTextContent('Position check')
+    expect(screen.queryByRole('button', { name: /show camera view|make smaller/i })).not.toBeInTheDocument()
+  })
+})
