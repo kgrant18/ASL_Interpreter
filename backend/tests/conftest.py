@@ -104,3 +104,15 @@ def _no_real_tts_load(monkeypatch):
     from app.meeting.tts import PiperTTS
 
     monkeypatch.setattr(PiperTTS, "warm", lambda self: None)
+
+
+@pytest.fixture(autouse=True)
+def per_sign_by_default(monkeypatch):
+    """Most plumbing tests check per-sign captions; phrase tests opt back in."""
+    import app.api.websocket as ws_mod
+    import app.config as config
+
+    monkeypatch.setenv("SIGNBRIDGE_PHRASES", "")
+    # app.config may have been reloaded by another test; patch every live holder.
+    for s in {id(config.settings): config.settings, id(ws_mod.settings): ws_mod.settings}.values():
+        monkeypatch.setattr(s, "phrases_path", None)

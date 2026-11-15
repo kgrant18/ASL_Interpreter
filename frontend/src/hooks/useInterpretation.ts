@@ -32,6 +32,14 @@ export interface Caption {
   score: number
   simulated: boolean
   at: number
+  glosses?: string[]
+}
+
+export interface RecognizedSign {
+  label: string
+  score: number
+  pending: string[]
+  at: number
 }
 
 const uuid = () =>
@@ -50,6 +58,7 @@ export function useInterpretation(settings: Settings) {
   const [caption, setCaption] = useState<Caption | null>(null)
   const [partial, setPartial] = useState<{ prediction: Prediction; top: [string, number][] } | null>(null)
   const [unknown, setUnknown] = useState(false)
+  const [lastSign, setLastSign] = useState<RecognizedSign | null>(null)
   const [status, setStatus] = useState<LiveStatus>({ processing: null, handsVisible: 0, performance: null, rttMs: null, frameSize: null })
   const [error, setError] = useState<{ code: string; message: string } | null>(null)
   const landmarksRef = useRef<Landmarks | null>(null)
@@ -74,7 +83,7 @@ export function useInterpretation(settings: Settings) {
       if ('session_id' in msg && msg.session_id && msg.session_id !== sessionId.current) return
       switch (msg.type) {
         case 'session.started':
-          setActiveMode(msg.mode)
+          setActiveMode(msg.mode === 'record' ? null : msg.mode)
           setPhase('running')
           setError(null)
           transport.current?.start()
@@ -106,9 +115,14 @@ export function useInterpretation(settings: Settings) {
             setUnknown(true)
           }
           break
+        case 'recognition.sign':
+          // An individual sign while phrases are matched: shown, never spoken or logged.
+          setLastSign({ label: msg.label, score: msg.score, pending: msg.pending, at: Date.now() })
+          break
         case 'recognition.result': {
           const id = `${msg.session_id}-${msg.event_id}`
           const simulated = Boolean(msg.simulated)
+          const glosses = msg.glosses ?? undefined
           const ev: HistoryEvent = {
             id,
             eventId: msg.event_id,
@@ -118,8 +132,11 @@ export function useInterpretation(settings: Settings) {
             score: msg.prediction.score,
             simulated,
             speech: 'queued',
+            glosses,
+            phrase: Boolean(msg.phrase_id),
           }
-          setCaption({ english: ev.english, label: ev.label, score: ev.score, simulated, at: ev.time })
+          setCaption({ english: ev.english, label: ev.label, score: ev.score, simulated, at: ev.time, glosses })
+          setLastSign((s) => (s ? { ...s, pending: [] } : s))
           setUnknown(false)
           const s = settingsRef.current
           if (!speech.supported) ev.speech = 'unavailable'
@@ -202,6 +219,7 @@ export function useInterpretation(settings: Settings) {
     landmarksRef.current = null
     setPartial(null)
     setUnknown(false)
+    setLastSign(null)
     setActiveMode(null)
     setStatus({ processing: null, handsVisible: 0, performance: null, rttMs: null, frameSize: null })
     rttAvg.current = null
@@ -244,6 +262,7 @@ export function useInterpretation(settings: Settings) {
   const clearHistory = useCallback(() => {
     setHistory([])
     setCaption(null)
+    setLastSign(null)
   }, [])
 
   return {
@@ -257,6 +276,7 @@ export function useInterpretation(settings: Settings) {
     caption,
     partial,
     unknown,
+    lastSign,
     status,
     error,
     dismissError: () => setError(null),

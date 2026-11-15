@@ -2,6 +2,7 @@
 
 export type VideoSource = 'webcam' | 'meeting'
 export type RecognitionMode = 'live' | 'simulated'
+export type SessionMode = RecognitionMode | 'record'
 
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error'
 
@@ -47,7 +48,7 @@ interface Base {
 
 export interface SessionStartedMsg extends Base {
   type: 'session.started'
-  mode: RecognitionMode
+  mode: SessionMode
   window_seconds: number
   model_loaded: boolean
 }
@@ -79,12 +80,31 @@ export interface RecognitionResultMsg extends Base {
   prediction: Prediction
   performance: Performance
   simulated?: boolean
+  /** Present when the result is a matched supported phrase: the signs recognized. */
+  glosses?: string[] | null
+  phrase_id?: string | null
+}
+export interface RecognitionSignMsg extends Base {
+  type: 'recognition.sign'
+  sequence: number
+  label: string
+  score: number
+  pending: string[]
 }
 export interface RecognitionUnknownMsg extends Base {
   type: 'recognition.unknown'
   sequence: number
   reason: 'low_confidence' | 'unsupported_sign'
   unknown_score: number
+}
+export interface RecordSavedMsg extends Base {
+  type: 'record.saved'
+  label: string
+  ok: boolean
+  message: string
+  frames: number
+  hand_frames: number
+  count: number
 }
 export interface ErrorMsg {
   type: 'error'
@@ -101,6 +121,8 @@ export type ServerMessage =
   | RecognitionPartialMsg
   | RecognitionResultMsg
   | RecognitionUnknownMsg
+  | RecognitionSignMsg
+  | RecordSavedMsg
   | ErrorMsg
   | { type: 'pong'; timestamp_ms: number }
 
@@ -112,6 +134,18 @@ export interface VocabularyEntry {
   validation: string
   test_accuracy: number | null
   test_samples: number | null
+}
+
+export interface SupportedPhrase {
+  id: string
+  english: string
+  glosses: string[]
+}
+
+export interface Vocabulary {
+  supported: VocabularyEntry[]
+  disabled: VocabularyEntry[]
+  phrases?: SupportedPhrase[]
 }
 
 export interface ModelInfo {
@@ -142,6 +176,9 @@ export interface HistoryEvent {
   score: number
   simulated: boolean
   speech: SpeechStatus
+  /** Recognized signs behind a phrase result. */
+  glosses?: string[]
+  phrase?: boolean
 }
 
 export interface Settings {

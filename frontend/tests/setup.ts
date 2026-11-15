@@ -73,6 +73,7 @@ Object.defineProperty(window, 'speechSynthesis', {
 
 // ---- fetch stub for /api/model and /api/vocabulary ----
 export const modelInfo = { recommended: undefined as number | undefined }
+export const vocabInfo = { phrases: [] as { id: string; english: string; glosses: string[] }[] }
 
 // ---- fake meeting-output backend ----
 export const meeting = {
@@ -120,6 +121,7 @@ vi.stubGlobal(
         ? {
             supported: [{ label: 'HELLO', english: 'Hello.', description: 'Salute from forehead.', enabled: true, validation: 'ok', test_accuracy: 0.86, test_samples: 14 }],
             disabled: [{ label: 'GOOD', english: 'Good.', description: '', enabled: false, validation: 'Disabled', test_accuracy: 0.17, test_samples: 12 }],
+            phrases: vocabInfo.phrases,
           }
         : { status: 'ok', model_loaded: true }
     return { ok: true, json: async () => body } as Response

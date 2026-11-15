@@ -169,7 +169,7 @@ class LandmarkTemporalRecognizer(SignRecognizer):
             "load_error": self.load_error,
             "device": self._device,
             "mode": "live",
-            "recognition": "isolated signs, limited vocabulary",
+            "recognition": "supported phrases, limited vocabulary",
             "supported_class_count": len(self._enabled),
             "trained_class_count": len([l for l in self._labels if l != UNKNOWN]),
             "window_seconds": self.window_s,

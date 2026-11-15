@@ -82,7 +82,8 @@ def test_subset_glosses_parsing(tmp_path):
 
 
 @pytest.mark.parametrize("name,weights", [("v1", "signgru.pt"), ("v2", "signgru_v2.pt"),
-                                           ("v3", "signgru_v3.pt"), ("bogus", "signgru.pt")])
+                                           ("v3", "signgru_v3.pt"), ("phrases", "signgru_phrases.pt"),
+                                           ("bogus", "signgru_phrases.pt")])
 def test_model_selector(monkeypatch, name, weights):
     import importlib
 
@@ -94,3 +95,49 @@ def test_model_selector(monkeypatch, name, weights):
     finally:
         monkeypatch.delenv("SIGNBRIDGE_MODEL")
         importlib.reload(cfg)
+
+
+@pytest.mark.parametrize("env,weights,phrases", [
+    (None, "signgru_phrases.pt", "phrases.json"),     # default: phrase model + phrase set
+    ("phrases", "signgru_phrases.pt", "phrases.json"),
+    ("v1", "signgru.pt", None),                        # older models: per-sign captions
+    ("v3", "signgru_v3.pt", None),
+])
+def test_default_config_and_phrase_set(monkeypatch, env, weights, phrases):
+    import importlib
+
+    import app.config as cfg
+
+    monkeypatch.delenv("SIGNBRIDGE_PHRASES", raising=False)
+    if env is None:
+        monkeypatch.delenv("SIGNBRIDGE_MODEL", raising=False)
+    else:
+        monkeypatch.setenv("SIGNBRIDGE_MODEL", env)
+    try:
+        s = importlib.reload(cfg).Settings()
+        assert s.model_path.name == weights
+        assert (s.phrases_path.name if s.phrases_path else None) == phrases
+        assert s.eval_path.name == weights.replace(".pt", "_eval.json")
+    finally:
+        monkeypatch.delenv("SIGNBRIDGE_MODEL", raising=False)
+        importlib.reload(cfg)
+
+
+def test_phrase_set_can_be_disabled(monkeypatch):
+    import importlib
+
+    import app.config as cfg
+
+    monkeypatch.setenv("SIGNBRIDGE_PHRASES", "")
+    try:
+        assert importlib.reload(cfg).Settings().phrases_path is None
+    finally:
+        monkeypatch.delenv("SIGNBRIDGE_PHRASES")
+        importlib.reload(cfg)
+
+
+def test_gloss_file_aliases():
+    from training.download_clips import parse_glosses
+
+    assert parse_glosses(["# c", "HELLO", "THIS/IT=THIS  # pointing", ""]) == {
+        "HELLO": "HELLO", "THIS/IT": "THIS"}

@@ -23,6 +23,7 @@ import numpy as np
 from ..config import Settings
 from ..recognition.base import SignRecognizer
 from ..recognition.inference import LandmarkTemporalRecognizer
+from ..recognition.phrases import PhraseMatch, PhraseMatcher, load_phrase_set
 from ..recognition.stabilizer import Observation, PredictionStabilizer, StabilizerConfig
 from ..recognition.vocabulary import english_for
 from ..schemas import messages as m
@@ -131,6 +132,8 @@ class LiveInterpretationSession(BaseSession):
         self.stabilizer = PredictionStabilizer(StabilizerConfig(threshold=cfg.threshold))
         self._last_infer_ms: float | None = None
         self._event_id = 0
+        path = settings.phrases_path
+        self.phrases = PhraseMatcher(load_phrase_set(path)) if path and path.exists() else None
 
     def update_config(self, upd: m.ConfigUpdate) -> None:
         super().update_config(upd)
@@ -179,6 +182,11 @@ class LiveInterpretationSession(BaseSession):
                 infer_ms = pred.inference_ms
                 out.extend(self._handle_prediction(seq, ts, pred, lm_ms, t0))
 
+        if self.phrases is not None:
+            match = self.phrases.tick(ts)
+            if match is not None:
+                out.append(self._phrase_result(seq, match, lm_ms, t0))
+
         perf = m.Performance(
             processing_ms=round((time.perf_counter() - t0) * 1000, 1),
             landmark_ms=round(lm_ms, 1),
@@ -208,7 +216,16 @@ class LiveInterpretationSession(BaseSession):
                                         is_unknown=False),
                 top=top_list,
             ).model_dump())
-        if event is not None:
+        if event is not None and self.phrases is not None:
+            match = self.phrases.add(event.label, event.score, ts)
+            out.append(m.RecognitionSign(
+                session_id=self.session_id, timestamp_ms=now_ms(), sequence=seq,
+                label=self.phrases.set.canonical(event.label), score=round(event.score, 3),
+                pending=self.phrases.pending if match is None else [],
+            ).model_dump())
+            if match is not None:
+                out.append(self._phrase_result(seq, match, lm_ms, t0))
+        elif event is not None:
             self._event_id += 1
             out.append(m.RecognitionResult(
                 session_id=self.session_id, timestamp_ms=now_ms(), sequence=seq,
@@ -223,10 +240,26 @@ class LiveInterpretationSession(BaseSession):
             ).model_dump())
         return out
 
+    def _phrase_result(self, seq: int, match: PhraseMatch, lm_ms: float, t0: float) -> dict:
+        self._event_id += 1
+        return m.RecognitionResult(
+            session_id=self.session_id, timestamp_ms=now_ms(), sequence=seq,
+            event_id=self._event_id,
+            prediction=m.Prediction(label=" ".join(match.glosses), english=match.phrase.english,
+                                    score=round(match.score, 3), is_stable=True, is_unknown=False),
+            performance=m.Performance(
+                processing_ms=round((time.perf_counter() - t0) * 1000, 1),
+                landmark_ms=round(lm_ms, 1), processed_fps=self.timing.fps,
+                dropped_frames=self.timing.dropped),
+            glosses=match.glosses, phrase_id=match.phrase.id,
+        ).model_dump()
+
     def close(self) -> None:
         super().close()
         self.buffer.clear()
         self.stabilizer.reset()
+        if self.phrases is not None:
+            self.phrases.reset()
 
 
 SIMULATED_SCRIPT = ["HELLO", "THANKYOU", "HELP", "PLEASE", "YES", "SORRY", "BYE"]
@@ -272,8 +305,47 @@ class SimulatedInterpretationSession(BaseSession):
         return out
 
 
+class RecordingSession(BaseSession):
+    """Collects landmarks for one take at a time (record.begin -> record.end).
+
+    Never runs the model. Frames outside a take are only used for the overlay.
+    """
+
+    mode = "record"
+    MAX_TAKE_FRAMES = 150  # ~10 s at 15 FPS
+
+    def __init__(self, cfg: m.SessionStart, settings: Settings, **kw):
+        super().__init__(cfg, settings, **kw)
+        self.label: str | None = None
+        self.take: list[FrameLandmarks] = []
+
+    def begin(self, label: str) -> None:
+        self.label, self.take = label, []
+
+    def end(self) -> tuple[str | None, list[FrameLandmarks]]:
+        out = (self.label, self.take)
+        self.label, self.take = None, []
+        return out
+
+    def process_frame(self, seq: int, capture_ms: float, jpeg: bytes) -> list[dict]:
+        t0 = time.perf_counter()
+        lm, lm_ms = self._landmarks(jpeg, capture_ms)
+        self.timing.tick()
+        recording = self.label is not None
+        if recording and len(self.take) < self.MAX_TAKE_FRAMES:
+            self.take.append(lm)
+        state = "no_signer" if lm.pose is None and not lm.has_hands else (
+            "recognizing" if recording else "idle")
+        perf = m.Performance(processing_ms=round((time.perf_counter() - t0) * 1000, 1),
+                             landmark_ms=round(lm_ms, 1), processed_fps=self.timing.fps,
+                             dropped_frames=self.timing.dropped)
+        return [self._status(seq, lm, state, perf)]
+
+
 def create_session(cfg: m.SessionStart, settings: Settings,
                    recognizer: LandmarkTemporalRecognizer | None, **kw) -> BaseSession:
+    if cfg.mode == "record":
+        return RecordingSession(cfg, settings, **kw)
     if cfg.mode == "simulated":
         return SimulatedInterpretationSession(cfg, settings, **kw)
     if recognizer is None or not recognizer.loaded:

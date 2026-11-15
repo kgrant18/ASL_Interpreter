@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from .api import meeting, routes, websocket  # noqa: E402
 from .config import settings  # noqa: E402
 from .meeting.service import MeetingOutput  # noqa: E402
-from .meeting.tts import PiperTTS  # noqa: E402
+from .meeting.tts import make_tts  # noqa: E402
 from .recognition.inference import LandmarkTemporalRecognizer, ensemble_members  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
         app.state.recognizer = rec
     own_meeting = getattr(app.state, "meeting", None) is None
     if own_meeting:
-        app.state.meeting = MeetingOutput(PiperTTS(settings.tts_voice_path))
+        app.state.meeting = MeetingOutput(make_tts(settings.tts_voice_path, settings.tts_engine))
     yield
     if own_meeting:
         app.state.meeting.close()

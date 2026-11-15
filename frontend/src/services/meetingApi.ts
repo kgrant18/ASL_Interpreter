@@ -20,7 +20,7 @@ export interface SentItem {
 
 export interface MeetingStatus {
   config: MeetingConfig
-  virtual_mic: { available: boolean; active: boolean; device_name?: string; error: string | null }
+  virtual_mic: { available: boolean; active: boolean; managed?: boolean; device_name?: string; error: string | null }
   tts: { engine: string; voice: string; available: boolean }
   player_available: boolean
   zoom: { connected: boolean; endpoint: string | null; seq: number | null }

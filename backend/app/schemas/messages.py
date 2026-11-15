@@ -22,7 +22,7 @@ class SessionStart(BaseModel):
     type: Literal["session.start"]
     session_id: str = Field(min_length=8, max_length=64)
     source: Literal["webcam", "meeting"] = "webcam"
-    mode: Literal["live", "simulated"] = "live"
+    mode: Literal["live", "simulated", "record"] = "live"
     target_fps: float = Field(default=15, ge=1, le=30)
     enable_landmarks: bool = True
     enable_tts: bool = True
@@ -39,6 +39,18 @@ class ConfigUpdate(BaseModel):
     session_id: str
     threshold: float | None = Field(default=None, ge=0.3, le=0.99)
     enable_landmarks: bool | None = None
+
+
+class RecordBegin(BaseModel):
+    type: Literal["record.begin"]
+    session_id: str
+    label: str = Field(min_length=1, max_length=24)
+
+
+class RecordEnd(BaseModel):
+    type: Literal["record.end"]
+    session_id: str
+    discard: bool = False
 
 
 class Prediction(BaseModel):
@@ -64,7 +76,7 @@ class _Base(BaseModel):
 
 class SessionStarted(_Base):
     type: Literal["session.started"] = "session.started"
-    mode: Literal["live", "simulated"]
+    mode: Literal["live", "simulated", "record"]
     window_seconds: float
     model_loaded: bool
 
@@ -102,6 +114,19 @@ class RecognitionResult(_Base):
     prediction: Prediction
     performance: Performance
     simulated: bool = False
+    # Set when the result is a matched sentence: the signs actually recognized.
+    glosses: list[str] | None = None
+    phrase_id: str | None = None
+
+
+class RecognitionSign(_Base):
+    """A stable individual sign while sentences are matched (shown, never spoken)."""
+
+    type: Literal["recognition.sign"] = "recognition.sign"
+    sequence: int
+    label: str
+    score: float
+    pending: list[str]
 
 
 class RecognitionUnknown(_Base):
@@ -109,6 +134,16 @@ class RecognitionUnknown(_Base):
     sequence: int
     reason: Literal["low_confidence", "unsupported_sign"]
     unknown_score: float
+
+
+class RecordSaved(_Base):
+    type: Literal["record.saved"] = "record.saved"
+    label: str
+    ok: bool
+    message: str = ""
+    frames: int = 0
+    hand_frames: int = 0
+    count: int = 0
 
 
 class ErrorMessage(BaseModel):

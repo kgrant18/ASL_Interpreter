@@ -12,6 +12,7 @@ interface Props {
   simulatedSession: boolean
   sendMode: SendMode
   onSendMode: (m: SendMode) => void
+  phrases?: boolean
 }
 
 function Toggle({ id, checked, onChange, disabled, label, hint }: { id: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; label: string; hint?: string }) {
@@ -50,7 +51,7 @@ function SentRow({ item }: { item: SentItem }) {
   )
 }
 
-export function MeetingPanel({ meeting, connected, simulatedSession, sendMode, onSendMode }: Props) {
+export function MeetingPanel({ meeting, connected, simulatedSession, sendMode, onSendMode, phrases = false }: Props) {
   const [token, setToken] = useState('')
   const [typed, setTyped] = useState('')
   const st = meeting.status
@@ -89,7 +90,7 @@ export function MeetingPanel({ meeting, connected, simulatedSession, sendMode, o
       </div>
 
       <p className="text-xs text-muted">
-        Recognized signs are spoken into a virtual microphone and/or posted as Zoom captions so other participants receive them. Only live recognition and text you type
+        {phrases ? 'Recognized phrases' : 'Recognized signs'} are spoken into a virtual microphone and/or posted as Zoom captions so other participants receive them. Only live recognition and text you type
         are sent — simulated demo output never is. Review captions here: recognition errors will reach the call.
       </p>
 
@@ -120,16 +121,18 @@ export function MeetingPanel({ meeting, connected, simulatedSession, sendMode, o
             ) : mic.active ? (
               <p className="text-xs text-muted">
                 Ready. In Zoom: <strong className="font-medium text-ink">Settings → Audio → Microphone → “{mic.device_name}”</strong>.{' '}
-                <button type="button" className="underline" onClick={() => void meeting.virtualMic('remove')}>
-                  Remove device
-                </button>
+                {mic.managed !== false && (
+                  <button type="button" className="underline" onClick={() => void meeting.virtualMic('remove')}>
+                    Remove device
+                  </button>
+                )}
               </p>
             ) : (
               <button type="button" className="mt-1 rounded-lg border border-line px-2.5 py-1 text-xs hover:bg-canvas" onClick={() => void meeting.virtualMic('create')}>
                 Create “SignBridge Virtual Microphone”
               </button>
             )}
-            {!st.tts.available && <p className="mt-1 text-xs text-danger">Piper voice not installed — run ./scripts/setup.sh.</p>}
+            {!st.tts.available && <p className="mt-1 text-xs text-danger">Speech voice not installed — run ./scripts/setup.sh.</p>}
             <Toggle id="mo-speech" label="Speak into the call" checked={cfg.speech} onChange={(v) => void meeting.setConfig({ speech: v })} />
             <Toggle id="mo-monitor" label="Also play on my speakers" hint="Hear what the call hears." checked={cfg.local_monitor} onChange={(v) => void meeting.setConfig({ local_monitor: v })} />
           </div>
@@ -175,7 +178,7 @@ export function MeetingPanel({ meeting, connected, simulatedSession, sendMode, o
         </div>
       )}
 
-      {st && (
+      {st && !phrases && (
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-xs text-muted">Send</span>
           <div role="radiogroup" aria-label="Send mode" className="inline-flex rounded-lg border border-line p-0.5 text-xs">

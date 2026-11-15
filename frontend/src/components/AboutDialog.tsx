@@ -36,14 +36,15 @@ export function AboutDialog({ open, onClose, model }: { open: boolean; onClose: 
             <h3 className="mb-1 font-semibold text-ink">What it does</h3>
             <p>
               SignBridge watches your webcam or a meeting window you choose, extracts hand and upper-body landmarks, and recognizes a small set of
-              isolated ASL signs. Recognized signs become English captions and can be spoken aloud on this computer.
+              ASL signs and the supported phrases built from them. Recognized phrases become English captions, are spoken aloud, and can be sent into a
+              Zoom, Meet or Teams call through a virtual microphone.
             </p>
           </section>
           <section>
             <h3 className="mb-1 font-semibold text-ink">What it does not do</h3>
             <ul className="list-disc space-y-1 pl-5">
               <li>Translate continuous ASL, grammar, fingerspelling or facial expressions.</li>
-              <li>Send audio into Zoom/Meet/Teams — other participants will not hear the speech unless your speakers are picked up.</li>
+              <li>Speak into a call unless you turn on “Send to meeting” (it is off every time the app starts).</li>
               <li>Pick the signer automatically when several people are on screen. Spotlight or pin the signer.</li>
             </ul>
           </section>
@@ -52,7 +53,7 @@ export function AboutDialog({ open, onClose, model }: { open: boolean; onClose: 
             <ul className="list-disc space-y-1 pl-5">
               <li>Signer's head, shoulders and both hands are visible and fill much of the frame.</li>
               <li>Even lighting, plain background, steady camera.</li>
-              <li>Sign one word at a time, then lower your hands briefly.</li>
+              <li>Sign a supported phrase at a natural pace, then lower your hands.</li>
             </ul>
           </section>
           <section>

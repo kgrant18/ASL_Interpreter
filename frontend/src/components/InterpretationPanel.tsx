@@ -1,5 +1,5 @@
 import { Hand, Square, Volume2, VolumeX } from 'lucide-react'
-import type { Caption, LiveStatus, SessionPhase } from '../hooks/useInterpretation'
+import type { Caption, LiveStatus, RecognizedSign, SessionPhase } from '../hooks/useInterpretation'
 import type { HistoryEvent, Prediction, RecognitionMode } from '../types/interpretation'
 import { CaptionDisplay } from './CaptionDisplay'
 import { HistoryPanel } from './HistoryPanel'
@@ -20,6 +20,8 @@ interface Props {
   speechSupported: boolean
   onStopSpeech: () => void
   threshold: number
+  phrases?: boolean
+  lastSign?: RecognizedSign | null
 }
 
 function recognitionLine(p: Props): { text: string; tone: 'neutral' | 'accent' | 'warn' } {
@@ -31,7 +33,7 @@ function recognitionLine(p: Props): { text: string; tone: 'neutral' | 'accent' |
   if (s === 'no_hands') return { text: 'No hands detected', tone: 'neutral' }
   if (s === 'collecting') return { text: 'Collecting motion', tone: 'neutral' }
   if (p.partial) return { text: 'Recognizing', tone: 'accent' }
-  if (p.unknown) return { text: 'No supported sign recognized', tone: 'neutral' }
+  if (p.unknown) return { text: p.phrases ? 'Watching for supported phrases' : 'No supported sign recognized', tone: 'neutral' }
   return { text: 'Watching for signs', tone: 'neutral' }
 }
 
@@ -64,7 +66,7 @@ export function InterpretationPanel(p: Props) {
         </div>
       </div>
 
-      <CaptionDisplay caption={p.caption} running={p.phase === 'running'} simulatedSession={simulatedSession} />
+      <CaptionDisplay caption={p.caption} running={p.phase === 'running'} simulatedSession={simulatedSession} phrases={p.phrases} />
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-line px-4 py-3">
@@ -90,7 +92,25 @@ export function InterpretationPanel(p: Props) {
         </div>
         <div className="rounded-xl border border-line px-4 py-3">
           <p className="text-[11px] font-medium uppercase tracking-wider text-faint">Latest sign</p>
-          {latest ? (
+          {p.phrases && !simulatedSession ? (
+            p.lastSign ? (
+              <>
+                <p className="mt-1.5 font-mono text-sm font-semibold">{p.lastSign.label}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {p.lastSign.pending.length > 1 ? (
+                    <span className="font-mono">{p.lastSign.pending.join(' · ')}</span>
+                  ) : (
+                    <>
+                      Model score <span className="font-mono">{p.lastSign.score.toFixed(2)}</span>
+                      <span className="text-faint"> (uncalibrated)</span>
+                    </>
+                  )}
+                </p>
+              </>
+            ) : (
+              <p className="mt-1.5 text-sm text-faint">—</p>
+            )
+          ) : latest ? (
             <>
               <p className="mt-1.5 font-mono text-sm font-semibold">{latest.label}</p>
               <p className="mt-1 text-xs text-muted">

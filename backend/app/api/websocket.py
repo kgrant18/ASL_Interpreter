@@ -18,7 +18,10 @@ from pydantic import ValidationError
 
 from ..config import settings
 from ..schemas import messages as m
-from ..services.interpretation import BaseSession, FrameError, create_session, now_ms
+from .. import recordings
+from ..services.interpretation import (
+    BaseSession, FrameError, RecordingSession, create_session, now_ms,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -66,6 +69,16 @@ class Connection:
                 upd = m.ConfigUpdate.model_validate(data)
                 if self.session and upd.session_id == self.session.session_id:
                     self.session.update_config(upd)
+            elif kind == "record.begin":
+                msg = m.RecordBegin.model_validate(data)
+                if not recordings.valid_label(msg.label):
+                    await self.send(_err("invalid_label", f"Invalid label {msg.label!r}."))
+                elif self._recording(msg.session_id):
+                    self.session.begin(msg.label)
+            elif kind == "record.end":
+                msg = m.RecordEnd.model_validate(data)
+                if self._recording(msg.session_id):
+                    await self.finish_take(msg)
             elif kind == "ping":
                 await self.send({"type": "pong", "timestamp_ms": now_ms()})
             else:
@@ -74,6 +87,23 @@ class Connection:
             first = exc.errors()[0]
             loc = ".".join(str(p) for p in first.get("loc", ()))
             await self.send(_err("invalid_config", f"Invalid {loc}: {first.get('msg')}"))
+
+    def _recording(self, session_id: str) -> bool:
+        return isinstance(self.session, RecordingSession) and self.session.session_id == session_id
+
+    async def finish_take(self, msg: m.RecordEnd) -> None:
+        async with self.lock:  # waits for the frame being processed
+            label, frames = self.session.end()
+        if label is None or msg.discard:
+            return
+        reply = dict(session_id=msg.session_id, timestamp_ms=now_ms(), label=label)
+        try:
+            info = await asyncio.to_thread(recordings.save, label, frames)
+            out = m.RecordSaved(ok=True, frames=info["frames"], hand_frames=info["hand_frames"],
+                                count=info["count"], **reply)
+        except recordings.RecordingError as exc:
+            out = m.RecordSaved(ok=False, message=str(exc), frames=len(frames), **reply)
+        await self.send(out.model_dump())
 
     async def start(self, cfg: m.SessionStart) -> None:
         async with self.lock:

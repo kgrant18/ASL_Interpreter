@@ -4,6 +4,14 @@
 - Meeting output is done.
 - v2 vocabulary: done and improved. 161 signs trained, 132 enabled, using a 5-seed ensemble at threshold 0.6. Correct first caption on held-out signers rose from 54.6 % to 65.6 %. It is opt-in with `SIGNBRIDGE_MODEL=v2`; v1 (87.4 %) stays the default.
 
+## Phase 10 (2026-11-14): macOS + supported phrases (default)
+- macOS (Apple Silicon): `setup.sh` skips Linux CUDA wheels; training on MPS, live inference on CPU (~1.6 ms vs 7.4 ms on MPS per window).
+- Meeting voice on macOS: Piper (or `say`) played into BlackHole 2ch via PortAudio; verified by recording BlackHole's input during playback; 80 % peak headroom.
+- Default model `SIGNBRIDGE_MODEL=phrases`: 15 ASL Citizen signs (+1.5k other-sign pool) for 5 supported phrases, fine-tuned with supplementary recordings; phrase matcher (`app/recognition/phrases.py`, `phrases.json`). v1/v2/v3 unchanged and selectable.
+- Not in ASL Citizen: EXPLAIN, PART, PRESENT, ANYTHING (ANY used as a variant of SOMETHING).
+- Sentence replay (spliced held-out clips through the live session): 0 wrong sentences; 1 false sentence in 32 min of other-sign clips; 0 in idle takes.
+- Bugs fixed: pose collapse when the signer is too close (now rejected as "no signer"); rest padding assumed clips start at t=0.
+
 ## Completed
 | Phase | Work |
 |---|---|

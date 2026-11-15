@@ -1,6 +1,6 @@
 # SignBridge
 
-**Live ASL recognition, supported vocabulary.** SignBridge is a meeting companion. It watches your webcam or a Google Meet, Zoom or Teams window you pick, recognizes a validated set of **19 isolated American Sign Language signs**, and turns them into English captions and local speech.
+**Live ASL recognition, supported phrases.** SignBridge is a meeting companion. It watches your webcam or a Google Meet, Zoom or Teams window you pick, recognizes a set of **supported ASL phrases** built from validated signs, and turns them into English captions and speech, locally or into your call.
 
 > SignBridge is an experimental ASL recognition prototype supporting a limited vocabulary. It is not a substitute for a qualified interpreter, particularly in medical, legal, emergency, or other high-stakes settings.
 
@@ -24,11 +24,12 @@ The recognizer is real, not scripted. A small temporal neural network reads Medi
 
 | | |
 |---|---|
-| OS | Ubuntu Linux (developed on 26.04). macOS should work but is untested. |
-| Python | **3.10–3.12** for the MediaPipe and PyTorch wheels. `setup.sh` finds one or creates a conda env. |
+| OS | macOS on Apple Silicon, or Ubuntu Linux (originally developed on 26.04) |
+| Python | **3.10–3.12** for the MediaPipe and PyTorch wheels. `setup.sh` finds one (on macOS: `brew install python@3.12`) or creates a conda env. |
 | Node.js | 20+ (developed on 24) |
 | Browser | Recent Chrome or Edge (recommended) or Firefox, at `http://localhost:5173` |
-| GPU | Optional. The model is tiny, and CPU inference is fine. CUDA is used automatically if PyTorch sees a GPU. |
+| GPU | Optional. The model is tiny. Live inference runs on CPU (fastest for one window at a time); training uses CUDA or Apple MPS automatically when available. |
+| Speech into a call | macOS: [BlackHole](https://github.com/ExistentialAudio/BlackHole) (`brew install blackhole-2ch`). Linux: PipeWire/PulseAudio. |
 | Speech on Linux | Chrome uses `speech-dispatcher`: `sudo apt install speech-dispatcher espeak-ng` |
 
 ## Installation
@@ -37,14 +38,14 @@ The recognizer is real, not scripted. A small temporal neural network reads Medi
 ./scripts/setup.sh
 ```
 
-This creates `backend/.venv` from the pinned `backend/requirements.lock`, installs the frontend packages, downloads the MediaPipe models and prints an environment report.
+This creates `backend/.venv` from the pinned `backend/requirements.lock` (on macOS the Linux-only CUDA wheels are skipped), installs the frontend packages, downloads the MediaPipe models and the Piper voice, checks for the virtual-microphone device and prints an environment report.
 
 ### Model
 
-The trained weights are not distributed: they are derived from ASL Citizen, whose license forbids redistributing the data. To build them locally (about 25 minutes; downloads about 800 MB of selected clips by HTTP range requests from Microsoft's server):
+The trained weights are not distributed: they are derived from ASL Citizen, whose license forbids redistributing the data. To build the default model locally (about 30–45 minutes on an M-series Mac; downloads about 1.1 GB of selected clips by HTTP range requests from Microsoft's server):
 
 ```bash
-make train      # download → landmarks → fit → evaluate
+make train-phrases   # download → landmarks → fit → evaluate (writes models/signgru_phrases.*)
 ```
 
 Using ASL Citizen means accepting the [Microsoft Research License Terms](https://www.microsoft.com/en-us/research/project/asl-citizen/dataset-license/): **non-commercial research use only, no redistribution**. Everything stays git-ignored under `backend/data/` and `backend/models/`.
@@ -61,8 +62,8 @@ Then open **http://localhost:5173**. The backend runs on `http://localhost:8000`
 
 1. Choose **Webcam** and click **Start Interpreting**, then allow camera access.
 2. Sit so your **head, shoulders and both hands** are in frame, with even lighting.
-3. Sign one supported word, such as HELLO, PLEASE or WATER, then **lower your hands briefly**.
-4. The caption appears and is spoken once, and a history entry is added. To repeat a word, lower your hands for about a second, then sign it again.
+3. Sign one of the supported phrases at a natural pace, then **lower your hands**.
+4. The English sentence appears as the caption, with the recognized signs underneath, and is spoken once. A history entry is added. Signs that don't complete a supported phrase are never spoken.
 5. Click **Stop** to release the camera.
 
 ## Using meeting mode
@@ -78,23 +79,31 @@ If **you** are the signer, SignBridge can deliver what it recognizes, or what yo
 - spoken by an offline voice through a **SignBridge Virtual Microphone** that you select in Zoom, Meet or Teams;
 - and/or as **Zoom closed captions** through Zoom's third-party caption API token.
 
-Open **Send to meeting**, create the virtual microphone, optionally paste a Zoom caption token, then click **Start sending to call**. It is off by default, a red LIVE badge shows while it's on, and **Ctrl+Shift+M** stops it instantly. Simulated output is never sent. Full setup and safety notes are in [docs/MEETING_OUTPUT.md](docs/MEETING_OUTPUT.md).
+Open **Send to meeting**, set up the virtual microphone (macOS: install BlackHole and pick **BlackHole 2ch** as the microphone in Zoom; Linux: click *Create*), optionally paste a Zoom caption token, then click **Start sending to call**. It is off by default, a red LIVE badge shows while it's on, and **Ctrl+Shift+M** stops it instantly. Simulated output is never sent. Full setup and safety notes are in [docs/MEETING_OUTPUT.md](docs/MEETING_OUTPUT.md).
 
-## Supported vocabulary
+## Supported phrases
 
-**Enabled (20):** BYE, FINISH, FRIEND, HELLO, HELP, LEARN, LOVE, MEET, MORE, NAME, NO, PLEASE, SIGN, SORRY, STOP, UNDERSTAND, WAIT, WATER, WHERE, YES.
+| Phrase | Signs (in order) |
+|---|---|
+| "Hello, it's nice to meet you." | HELLO NICE MEET YOU |
+| "Did I miss anything?" | ME MISS SOMETHING (or ANY) |
+| "I have an idea." | ME HAVE IDEA |
+| "I can show this." | ME CAN SHOW THIS |
+| "Thank you for listening." | THANKYOU |
 
-**Trained but disabled (4):** AGAIN, GOOD, NICE, THANKYOU. These failed the validation gate, or for GOOD, failed on test. Everything else is rejected as "no supported sign".
+Matching is tolerant: a phrase is recognized when at least half of its signs, including all but one of its content signs, appear in order within 7 seconds. Pointing signs (ME, YOU, THIS) may be missed. A complete phrase is spoken at once; a partial one after a 2.5 s pause. The same phrase is not repeated within 6 s, and signs that don't complete a phrase are never spoken. Phrases are defined in `backend/app/recognition/phrases.json`.
 
-### Larger vocabularies (opt-in)
+### Other models (opt-in, per-sign captions)
 
-Pick a model with `SIGNBRIDGE_MODEL`:
+The per-sign models from earlier versions remain available with `SIGNBRIDGE_MODEL`:
 
 ```bash
-SIGNBRIDGE_MODEL=v3 ./scripts/dev.sh
+SIGNBRIDGE_MODEL=v1 ./scripts/dev.sh
 ```
 
-| | v1 (default) | v3 (curated) | v2 (largest) |
+v1: BYE, FINISH, FRIEND, HELLO, HELP, LEARN, LOVE, MEET, MORE, NAME, NO, PLEASE, SIGN, SORRY, STOP, UNDERSTAND, WAIT, WATER, WHERE, YES.
+
+| | v1 | v3 (curated) | v2 (largest) |
 |---|---|---|---|
 | Enabled signs | 20 | **50** | 132 |
 | Correct first caption | **87.4 %** | 78.7 % | 65.6 % |
@@ -128,7 +137,7 @@ Details: [docs/MODEL_DECISION.md](docs/MODEL_DECISION.md) and [docs/EVALUATION.m
 ## Testing
 
 ```bash
-make test              # backend (pytest, 38 tests) + frontend (vitest, 13 tests)
+make test              # backend (pytest, 115 tests) + frontend (vitest, 28 tests)
 make test-backend
 make test-frontend
 make check             # environment report
@@ -144,8 +153,9 @@ Unit tests use a **mocked** recognizer and a fake landmark extractor to test the
 | **Camera permission denied** | Click the camera icon in the address bar → Allow, then Start again. Close other apps using the camera (Zoom/Meet can lock it). |
 | **Screen capture cancelled / blank** | Click Start and pick the window again. On Wayland, Chrome may only offer whole screens or tabs; a **tab** works best for Meet. |
 | **"Backend disconnected"** | Run `./scripts/dev.sh`. The app reconnects by itself. Check `curl localhost:8000/health`. |
-| **Model unavailable** | Run `make train`, or check that `backend/models/signgru.pt` and `signgru_eval.json` exist. Use Simulated Demo meanwhile. |
-| **CUDA not used** | Optional. Check `make check`. To force CPU: `SIGNBRIDGE_DEVICE=cpu ./scripts/dev.sh`. |
+| **Model unavailable** | Run `make train-phrases`, or check that `backend/models/signgru_phrases.pt` and `signgru_phrases_eval.json` exist. Use Simulated Demo meanwhile. |
+| **GPU not used** | Optional; live inference is fastest on CPU. To force a device: `SIGNBRIDGE_DEVICE=cpu|mps|cuda ./scripts/dev.sh`. |
+| **Zoom doesn't hear SignBridge (macOS)** | `./scripts/virtual_mic.sh status` should say `active: BlackHole 2ch`. If BlackHole was just installed, restart the Mac. In Zoom pick **BlackHole 2ch** as the microphone, then click **Start sending to call** in SignBridge. `./scripts/virtual_mic.sh test` plays a test sentence into it. |
 | **MediaPipe install fails** | You're probably on Python 3.13+. Use 3.12: `SIGNBRIDGE_PYTHON=python3.12 ./scripts/setup.sh` (or let setup create the conda env). |
 | **No audio** | Click **Settings → Test speech**. On Linux install `speech-dispatcher espeak-ng` and restart Chrome. Captions still work when muted. |
 | **Signs not recognized** | Fill the frame with head, shoulders and hands. Sign at a natural pace, one word at a time, and lower your hands between words. Try lowering the threshold in Settings → Advanced. |
@@ -153,11 +163,11 @@ Unit tests use a **mocked** recognizer and a fake landmark extractor to test the
 
 ## Limitations
 
-- **Limited vocabulary:** 19 isolated signs. This is not continuous ASL translation, grammar, fingerspelling or classifiers.
-- **No facial grammar:** only a few face points from the pose model are used.
+- **Limited vocabulary:** a small set of supported phrases built from isolated signs. This is not continuous ASL translation, grammar, fingerspelling or classifiers.
+- **No facial grammar:** only a few face points from the pose model are used, so question faces (e.g. for "Did I miss anything?") are not read.
 - **Sensitive to conditions:** lighting, framing, camera angle, motion blur and a compressed meeting video all reduce accuracy.
 - **Signer variation:** accuracy was measured on 11 held-out ASL Citizen signers. Your signing, regional variants and speed may differ.
-- **Local speech only:** meeting participants won't hear it unless your speakers are picked up.
+- **Speech into a call** needs the virtual microphone (BlackHole on macOS, PipeWire on Linux) and the *Send to meeting* switch.
 - **One signer at a time,** with no automatic signer selection.
 
 More in [docs/LIMITATIONS.md](docs/LIMITATIONS.md). Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Roadmap: [docs/FUTURE_WORK.md](docs/FUTURE_WORK.md).

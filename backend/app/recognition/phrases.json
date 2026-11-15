@@ -1,0 +1,18 @@
+{
+  "window_s": 10.0,
+  "settle_ms": 2500,
+  "repeat_cooldown_s": 6.0,
+  "trailing_ms": 3000,
+  "pointing": ["ME", "YOU", "THIS"],
+  "aliases": {
+    "SOMETHING": ["SOMETHING", "ANY"],
+    "CAN": ["CAN1"]
+  },
+  "phrases": [
+    {"id": "greeting", "english": "Hello, it's nice to meet you.", "signs": ["HELLO", "NICE", "MEET", "YOU"]},
+    {"id": "missed", "english": "Did I miss anything?", "signs": ["ME", "MISS", "SOMETHING"]},
+    {"id": "idea", "english": "I have an idea.", "signs": ["ME", "HAVE", "IDEA"]},
+    {"id": "show", "english": "I can show this.", "signs": ["ME", "CAN", "SHOW", "THIS"]},
+    {"id": "thanks", "english": "Thank you for listening.", "signs": ["THANKYOU"]}
+  ]
+}

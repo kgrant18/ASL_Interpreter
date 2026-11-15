@@ -5,9 +5,10 @@ interface Props {
   caption: Caption | null
   running: boolean
   simulatedSession: boolean
+  phrases?: boolean
 }
 
-export function CaptionDisplay({ caption, running, simulatedSession }: Props) {
+export function CaptionDisplay({ caption, running, simulatedSession, phrases = false }: Props) {
   return (
     <div className="relative min-h-[148px] rounded-xl bg-canvas px-6 py-5">
       {simulatedSession && (
@@ -18,12 +19,17 @@ export function CaptionDisplay({ caption, running, simulatedSession }: Props) {
       <p className="text-xs font-medium uppercase tracking-wider text-faint">Caption</p>
       <div aria-live="assertive" aria-atomic="true">
         {caption ? (
-          <p key={caption.at} className="caption-in mt-2 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-            {caption.english}
-          </p>
+          <div key={caption.at} className="caption-in">
+            <p className="mt-2 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">{caption.english}</p>
+            {caption.glosses && caption.glosses.length > 0 && (
+              <p className="mt-2 font-mono text-xs tracking-wide text-muted" aria-label="Recognized signs">
+                {caption.glosses.join(' · ')}
+              </p>
+            )}
+          </div>
         ) : (
           <p className="mt-2 text-2xl font-medium text-faint">
-            {running ? 'Waiting for a supported sign…' : 'Captions will appear here'}
+            {running ? (phrases ? 'Waiting for a supported phrase…' : 'Waiting for a supported sign…') : 'Captions will appear here'}
           </p>
         )}
       </div>

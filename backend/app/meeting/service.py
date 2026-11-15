@@ -14,6 +14,7 @@ import os
 import queue
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -103,12 +104,19 @@ class AudioPlayer:
                     p.terminate()
 
 
+def default_player():
+    if sys.platform == "darwin":
+        from .audio_mac import MacAudioPlayer
+        return MacAudioPlayer()
+    return AudioPlayer()
+
+
 class MeetingOutput:
     def __init__(self, tts: PiperTTS, player: AudioPlayer | None = None,
                  mic: object = virtual_mic,
                  zoom_factory: Callable[[str], ZoomCaptionClient] = ZoomCaptionClient):
         self.tts = tts
-        self.player = player or AudioPlayer()
+        self.player = player or default_player()
         self.mic = mic
         self.zoom_factory = zoom_factory
         self.config = MeetingConfig()
@@ -212,13 +220,14 @@ class MeetingOutput:
                 item.speech = "skipped"
                 return
             try:
-                if not self.mic.status().get("active"):
-                    raise RuntimeError("virtual microphone is not set up")
+                mic = self.mic.status()
+                if not mic.get("active"):
+                    raise RuntimeError(mic.get("error") or "virtual microphone is not set up")
                 wav = self.tts.synthesize(item.text)
                 if not self._current(job):
                     item.speech = "skipped"
                     return
-                targets: list[str | None] = [virtual_mic.SINK]
+                targets: list[str | None] = [mic.get("target", virtual_mic.SINK)]
                 if self.config.local_monitor:
                     targets.append(None)
                 self.player.play(wav, targets)
@@ -231,7 +240,8 @@ class MeetingOutput:
         return {
             "config": asdict(self.config),
             "virtual_mic": self.mic.status(),
-            "tts": {"engine": "piper", "voice": self.tts.voice_path.stem,
+            "tts": {"engine": getattr(self.tts, "engine", "piper"),
+                    "voice": self.tts.voice_path.stem,
                     "available": self.tts.available,
                     "error": getattr(self.tts, "error", None)},
             "player_available": self.player.available(),

@@ -15,6 +15,25 @@ signs → SignBridge UI ──POST /api/meeting/send──▶ backend MeetingOut
                                                                                = "SignBridge Virtual Microphone"
 ```
 
+## Setup (macOS, BlackHole)
+
+```
+recognized sentence → POST /api/meeting/send → MeetingOutput queue
+                      └─ Piper TTS (or macOS `say`) → PortAudio → "BlackHole 2ch" output
+                                                       └─ BlackHole loopback → "BlackHole 2ch" input = Zoom microphone
+```
+
+1. Install BlackHole once: `brew install blackhole-2ch` (asks for your password), then **restart the Mac** so Core Audio loads the driver.
+2. Check it: `./scripts/virtual_mic.sh status` prints `active: BlackHole 2ch`; `./scripts/virtual_mic.sh test` plays a sentence into it (`test monitor` also plays it on your speakers).
+3. In Zoom: **Settings → Audio → Microphone → BlackHole 2ch**.
+   - Untick **Automatically adjust microphone volume**, and set **Suppress background noise** to **Low** (synthetic speech can otherwise be gated or clipped).
+   - Speaker stays your normal output, so you still hear the other participants.
+   - BlackHole carries only SignBridge's voice. Your real microphone is not in the call while BlackHole is selected; switch back in Zoom when you want to talk.
+4. In SignBridge open **Send to meeting**: the Voice card says *Ready … “BlackHole 2ch”*. Leave **Speak into the call** on; turn on **Also play on my speakers** if you want to hear exactly what the call hears.
+5. Click **Start sending to call** (red LIVE badge). **Ctrl+Shift+M** stops it instantly.
+
+Voices: the default is the offline Piper voice (`en_US-ljspeech-medium`). `SIGNBRIDGE_TTS=say` uses the macOS system voice instead (pick one with `SIGNBRIDGE_SAY_VOICE=Samantha`). Speech is played at up to 80 % of full scale so Zoom does not clip it. A different loopback device can be used with `SIGNBRIDGE_MIC_DEVICE=<name substring>`.
+
 ## Setup (Linux, PipeWire or PulseAudio)
 
 1. Run `./scripts/setup.sh`. It downloads the Piper voice (`en_US-ljspeech-medium`, trained on public-domain LJ Speech).
@@ -44,7 +63,8 @@ signs → SignBridge UI ──POST /api/meeting/send──▶ backend MeetingOut
 ## Send modes
 
 - **Each sign.** Every recognized sign is spoken or captioned as soon as it is recognized.
-- **Phrase after pause** (default). Signs collect in a pending line that shows the raw signs and the English, for example `WHERE BATHROOM → "Where bathroom?"`. The phrase is sent after a pause, 2 s by default and adjustable in Settings, or when you lower your hands out of frame. You can **Send now** or **Discard**.
+- **Supported phrases.** When the model has a phrase set (the default), each matched sentence is sent as soon as it is recognized, in either mode; individual signs are never sent.
+- **Phrase after pause** (per-sign models). Signs collect in a pending line that shows the raw signs and the English, for example `WHERE BATHROOM → "Where bathroom?"`. The phrase is sent after a pause, 2 s by default and adjustable in Settings, or when you lower your hands out of frame. You can **Send now** or **Discard**.
   - The phrase is a word-for-word gloss with fixed-up punctuation. It is **not** ASL→English translation: ASL grammar, word order and facial markers are not modeled.
   - Showing the pending line lets the signer catch a misrecognized sign before it is sent.
 - **Typed messages.** The text box speaks or captions anything typed. This is the fallback for signs outside the vocabulary.
@@ -72,4 +92,4 @@ signs → SignBridge UI ──POST /api/meeting/send──▶ backend MeetingOut
 - That Zoom accepts and shows our captions. The format follows Zoom's support article and community examples, but the API's behavior can change, and some accounts disable it.
 - How each meeting app's noise suppression treats the synthetic voice.
 
-Windows and macOS would need VB-Cable or BlackHole instead of `pactl`. Not implemented.
+macOS uses BlackHole (above). Windows would need VB-Cable; not implemented.

@@ -82,12 +82,20 @@ def main() -> int:
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--hidden", type=int, default=128)
     ap.add_argument("--proj", type=int, default=192)
+    ap.add_argument("--init", default=None,
+                    help="fine-tune: start from this checkpoint (same labels required)")
+    ap.add_argument("--val-splits", default="val",
+                    help="comma-separated splits used for checkpoint selection")
+    ap.add_argument("--device", default="auto", help="auto (cuda > mps > cpu) | cuda | mps | cpu")
     args = ap.parse_args()
     out_path = Path(args.out)
 
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = args.device
+    if device == "auto":
+        device = ("cuda" if torch.cuda.is_available()
+                  else "mps" if torch.backends.mps.is_available() else "cpu")
     print("device:", device)
 
     t0 = time.time()
@@ -96,10 +104,19 @@ def main() -> int:
     labels = sorted({c.label for c in clips if c.label != UNKNOWN}) + [UNKNOWN]
     labels_idx = {k: i for i, k in enumerate(labels)}
     train = [c for c in clips if c.split == "train"]
-    val = [c for c in clips if c.split == "val"]
+    val_splits = set(args.val_splits.split(","))
+    val = [c for c in clips if c.split in val_splits]
     print(f"train={len(train)} val={len(val)} classes={len(labels)}")
 
+    init = torch.load(args.init, map_location="cpu", weights_only=False) if args.init else None
+    if init is not None:
+        if init["labels"] != labels:
+            raise SystemExit(f"--init labels differ: {init['labels']} vs {labels}")
+        args.hidden, args.proj = init.get("hidden", 128), init.get("proj", 192)
     model = SignGRU(FEATURE_DIM, len(labels), hidden=args.hidden, proj=args.proj).to(device)
+    if init is not None:
+        model.load_state_dict(init["state_dict"])
+        print(f"fine-tuning from {args.init}")
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-2)
     sched = torch.optim.lr_scheduler.OneCycleLR(
         opt, max_lr=args.lr, total_steps=args.epochs * args.steps)
@@ -140,8 +157,12 @@ def main() -> int:
         "arch": "SignGRU",
         "version": time.strftime("%Y%m%d-%H%M"),
         "train_info": {
-            "dataset": "ASL Citizen (Microsoft Research), official signer-independent splits",
+            "dataset": ("ASL Citizen (Microsoft Research) plus supplementary signer recordings"
+                        if any(c.participant == "local" for c in train) else
+                        "ASL Citizen (Microsoft Research), official signer-independent splits"),
             "train_clips": len(train), "val_clips": len(val),
+            "local_train_clips": sum(c.participant == "local" for c in train),
+            "init": Path(args.init).name if args.init else None,
             "val_central_acc": best, "epochs": args.epochs, "seed": args.seed,
         },
     }, out_path)

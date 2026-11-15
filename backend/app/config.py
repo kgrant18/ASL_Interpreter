@@ -13,11 +13,24 @@ def _env(name: str, default: str) -> str:
     return os.environ.get(f"SIGNBRIDGE_{name}", default)
 
 
-# SIGNBRIDGE_MODEL=v1 (20 signs), v2 (161 trained, ensemble) or v3 (51 curated signs).
-_MODEL_FILES = {"v1": ("signgru.pt", "signgru_eval.json"),
-                "v2": ("signgru_v2.pt", "signgru_v2_eval.json"),
-                "v3": ("signgru_v3.pt", "signgru_v3_eval.json")}
-_MODEL = _MODEL_FILES.get(os.environ.get("SIGNBRIDGE_MODEL", "v1"), _MODEL_FILES["v1"])
+# SIGNBRIDGE_MODEL selects weights, evaluation report and (optionally) a phrase set:
+#   phrases (default) - phrase-sign model + phrase matcher (app/recognition/phrases.json)
+#   v1 (20 signs), v2 (161 trained, ensemble), v3 (51 curated signs) - per-sign captions
+_MODEL_FILES = {"phrases": ("signgru_phrases.pt", "signgru_phrases_eval.json", "phrases.json"),
+                "v1": ("signgru.pt", "signgru_eval.json", None),
+                "v2": ("signgru_v2.pt", "signgru_v2_eval.json", None),
+                "v3": ("signgru_v3.pt", "signgru_v3_eval.json", None)}
+DEFAULT_MODEL = "phrases"
+_MODEL = _MODEL_FILES.get(os.environ.get("SIGNBRIDGE_MODEL", DEFAULT_MODEL),
+                          _MODEL_FILES[DEFAULT_MODEL])
+
+
+def _phrases_default() -> Path | None:
+    # SIGNBRIDGE_PHRASES=<path> overrides; SIGNBRIDGE_PHRASES= (empty) disables.
+    env = os.environ.get("SIGNBRIDGE_PHRASES")
+    if env is not None:
+        return Path(env) if env else None
+    return BACKEND_DIR / "app" / "recognition" / _MODEL[2] if _MODEL[2] else None
 
 
 @dataclass
@@ -32,7 +45,9 @@ class Settings:
         "EVAL_PATH", str(BACKEND_DIR / "models" / _MODEL[1]))))
     tts_voice_path: Path = field(default_factory=lambda: Path(_env(
         "TTS_VOICE", str(BACKEND_DIR / "models" / "piper" / "en_US-ljspeech-medium.onnx"))))
-    device: str = field(default_factory=lambda: _env("DEVICE", "auto"))
+    tts_engine: str = field(default_factory=lambda: _env("TTS", "auto"))  # auto | piper | say
+    phrases_path: Path | None = field(default_factory=_phrases_default)
+    device: str = field(default_factory=lambda: _env("DEVICE", "auto"))  # auto | cpu | cuda | mps
     max_frame_bytes: int = field(default_factory=lambda: int(_env("MAX_FRAME_BYTES", str(1_000_000))))
     max_frame_pixels: int = 1920 * 1080
     # Run the classifier at most this often (ms); frames still update the buffer.

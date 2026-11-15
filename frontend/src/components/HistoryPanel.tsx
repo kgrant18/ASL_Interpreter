@@ -59,7 +59,9 @@ export function HistoryPanel({ history, onClear }: { history: HistoryEvent[]; on
           {history.map((e) => (
             <li key={e.id} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-canvas">
               <span className="w-[68px] shrink-0 font-mono text-[11px] text-faint">{fmt(e.time)}</span>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{e.english}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium" title={e.glosses?.join(' ')}>
+                {e.english}
+              </span>
               {e.simulated && <span className="rounded bg-warn-soft px-1.5 py-0.5 text-[10px] font-bold text-warn">SIM</span>}
               <span className="font-mono text-[11px] text-muted" title="Model score (uncalibrated)">{e.score.toFixed(2)}</span>
               <span className="inline-flex w-[84px] items-center justify-end gap-1 text-[11px] text-faint">

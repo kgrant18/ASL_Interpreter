@@ -1,0 +1,18 @@
+# Signs for the supported phrases (ASL Citizen gloss[=model label]).
+# ANYTHING has no ASL Citizen entry; ANY (first half of ANY+THING) stands in.
+# EXPLAIN has no entry either, so phrase 4 is ME CAN SHOW THIS.
+HELLO
+NICE
+MEET
+YOU
+ME
+MISS
+SOMETHING
+ANY
+HAVE
+IDEA
+CAN1
+CAN2
+SHOW
+THIS/IT=THIS
+THANKYOU

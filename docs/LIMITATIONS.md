@@ -18,6 +18,11 @@
 - v2's enabled set was chosen on only 3–4 validation clips per sign, so some enabled signs will be weak and some disabled ones would actually work.
 - The streaming metrics pad each test clip with 1.5 s of rest before the sign and 1 s after, built from the signer's own pose. This mimics a signer who is already on camera. Before this change the replay began predicting only once the sign was nearly over. The v1 numbers were re-measured with the same padding.
 
+## Supported phrases
+- Phrases are matched from recognized signs; a sentence is spoken only when enough of its signs appear in order, so a missed content sign means no sentence (never a partial one).
+- The matcher cannot tell a statement from a question: facial grammar is not modeled.
+- Several phrases share ME; it is treated as optional, so a phrase needs its content signs.
+
 ## Capture
 - **One signer.** In gallery view, MediaPipe may pick any person or none. Pin or spotlight the signer.
 - **Meeting video quality:** compression, low resolution and a small tile reduce accuracy.
@@ -25,7 +30,7 @@
 - **Pane testing:** camera and screen capture can't be exercised inside the Claude desktop app's Browser pane. Use a normal browser.
 
 ## Audio
-- Meeting output (virtual microphone + Zoom captions) is Linux-only (PipeWire/PulseAudio). Zoom's caption API was implemented to its documented format but has not been verified in a live Zoom meeting. See [MEETING_OUTPUT.md](MEETING_OUTPUT.md).
+- Meeting output (virtual microphone + Zoom captions) works on Linux (PipeWire/PulseAudio) and macOS (BlackHole). Zoom's caption API was implemented to its documented format but has not been verified in a live Zoom meeting. See [MEETING_OUTPUT.md](MEETING_OUTPUT.md).
 - Recognition mistakes are sent to the call when meeting output is on. Phrase mode shows the pending signs so they can be discarded, but nothing is reviewed automatically.
 - Phrase mode joins sign glosses word for word; it is not a grammatical ASL→English translation.
 - Voices depend on the browser and OS. Chrome on Linux needs `speech-dispatcher`.

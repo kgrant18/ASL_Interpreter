@@ -45,6 +45,11 @@ class BodyReference:
     scale: float
 
 
+# Shoulder width in aspect-corrected image heights. ASL Citizen clips are >= 0.44
+# (1st percentile); a pose detected at a few hundredths is a mis-detection.
+MIN_SHOULDER_WIDTH = 0.12
+
+
 def body_reference(frames: list[FrameLandmarks]) -> BodyReference | None:
     """Window-level reference from shoulders. None when no usable pose exists."""
     centers, widths = [], []
@@ -59,8 +64,8 @@ def body_reference(frames: list[FrameLandmarks]) -> BodyReference | None:
     if not centers:
         return None
     scale = float(np.median(widths))
-    if scale < 1e-3:
-        return None
+    if scale < MIN_SHOULDER_WIDTH:
+        return None  # pose collapsed/mis-detected (e.g. signer too close): not a usable body
     return BodyReference(origin=np.median(np.array(centers), axis=0), scale=scale)
 
 

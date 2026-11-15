@@ -21,9 +21,10 @@ interface Props {
   onToggleTheme: () => void
   meetingLive?: boolean
   onMuteMeeting?: () => void
+  phrases?: boolean
 }
 
-export function Header({ connection, onSettings, onHelp, dark, onToggleTheme, meetingLive, onMuteMeeting }: Props) {
+export function Header({ connection, onSettings, onHelp, dark, onToggleTheme, meetingLive, onMuteMeeting, phrases }: Props) {
   const btn = 'inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-ink border border-transparent hover:border-line transition-colors'
   return (
     <header className="flex items-center justify-between gap-4 px-5 py-4 sm:px-8">
@@ -31,7 +32,7 @@ export function Header({ connection, onSettings, onHelp, dark, onToggleTheme, me
         <Logo />
         <div className="leading-tight">
           <h1 className="text-[15px] font-semibold tracking-tight">SignBridge</h1>
-          <p className="text-xs text-muted">Live ASL recognition — supported vocabulary</p>
+          <p className="text-xs text-muted">Live ASL recognition — supported {phrases ? 'phrases' : 'vocabulary'}</p>
         </div>
       </div>
       <div className="flex items-center gap-2">

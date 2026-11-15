@@ -66,7 +66,8 @@ def with_rest(frames: list, pre_ms: int = REST_PRE_MS, post_ms: int = REST_POST_
     first, last = posed[0], posed[-1]
     pre = [replace(first, timestamp_ms=t, left_hand=None, right_hand=None)
            for t in range(0, pre_ms, REST_STEP_MS)]
-    body = [replace(f, timestamp_ms=f.timestamp_ms + pre_ms) for f in frames]
+    t0 = frames[0].timestamp_ms  # clips may not start at 0 (e.g. browser-clock recordings)
+    body = [replace(f, timestamp_ms=f.timestamp_ms - t0 + pre_ms) for f in frames]
     end = body[-1].timestamp_ms
     post = [replace(last, timestamp_ms=end + t, left_hand=None, right_hand=None)
             for t in range(REST_STEP_MS, post_ms + 1, REST_STEP_MS)]
@@ -80,7 +81,8 @@ class _NoExtractor:
 
 def streaming_replay(rec, videos: list[str]) -> list[list[str]]:
     """Return emitted labels per clip using the live session code path."""
-    settings = Settings()
+    from dataclasses import replace
+    settings = replace(Settings(), phrases_path=None)  # per-sign metrics
     results = []
     for video in videos:
         frames = with_rest(unpack(np.load(LANDMARK_DIR / (Path(video).stem + ".npz"))))
@@ -142,6 +144,12 @@ def main() -> int:
     ap.add_argument("--ensemble", action="store_true",
                     help="also load <weights stem>_s<N>.pt seed models and average them")
     ap.add_argument("--device", default="cpu")
+    ap.add_argument("--local-gate-split", default=None,
+                    help="also enable a sign that passes the gate on this split (e.g. lval)")
+    ap.add_argument("--local-test-split", default=None,
+                    help="held-out local recordings to report separately (e.g. ltest)")
+    ap.add_argument("--local-doc-out", default=None,
+                    help="where to write the local-recordings report (keep it git-ignored)")
     ap.add_argument("--threshold", type=float, default=THRESHOLD,
                     help="stabilizer threshold; choose it on validation signers only")
     args = ap.parse_args()
@@ -167,9 +175,15 @@ def main() -> int:
     rec._enabled = set(targets)
     val_m = manifest[manifest.split == "val"].reset_index(drop=True)
     val_stats, val_unk = streaming_stats(val_m, streaming_replay(rec, list(val_m.video)), targets)
-    enabled = [t for t in targets if val_stats[t]["recall"] >= MIN_RECALL
-               and (val_stats[t]["precision"] or 0) >= MIN_PRECISION
-               and t not in MANUAL_DISABLE]
+    def passes(st):
+        return st["n"] > 0 and st["recall"] >= MIN_RECALL and (st["precision"] or 0) >= MIN_PRECISION
+
+    lval_stats = None
+    if args.local_gate_split:
+        lv = manifest[manifest.split == args.local_gate_split].reset_index(drop=True)
+        lval_stats, _ = streaming_stats(lv, streaming_replay(rec, list(lv.video)), targets)
+    enabled = [t for t in targets if t not in MANUAL_DISABLE and (
+        passes(val_stats[t]) or (lval_stats is not None and passes(lval_stats[t])))]
     print("enabled from validation:", enabled)
 
     # ---- 2. test metrics (held-out signers) ----
@@ -227,12 +241,48 @@ def main() -> int:
         "validation_unknown": val_unk,
         "confusion_matrix": conf.tolist(),
     }
+    if lval_stats is not None:
+        report["enable_rule"] += "; or the same rule on held-out supplementary recordings"
+        report["local_validation_streaming"] = lval_stats
+    if args.local_test_split:
+        lt = manifest[manifest.split == args.local_test_split].reset_index(drop=True)
+        lt_stats, lt_unk = streaming_stats(lt, streaming_replay(rec, list(lt.video)), enabled)
+        report["local_test"] = {"streaming": lt_stats, "idle": lt_unk,
+                                "clips": len(lt)}
+        if args.local_doc_out:
+            write_local_markdown(report, Path(args.local_doc_out))
     Path(args.eval_out).write_text(json.dumps(report, indent=2))
     write_markdown(report, Path(args.doc_out))
     print(json.dumps({k: report[k] for k in ("enabled", "test_central_accuracy",
                                              "test_central_accuracy_target_classes",
                                              "streaming")}, indent=2))
     return 0
+
+
+def write_local_markdown(r: dict, out: Path) -> None:
+    """Per-sign streaming results: dataset test signers vs held-out local recordings."""
+    lt = r["local_test"]["streaming"]
+    idle = r["local_test"]["idle"]
+    lines = ["# Held-out evaluation: dataset signers vs local recordings", "",
+             f"Threshold {r['streaming']['threshold']}; enabled: {', '.join(r['enabled'])}", "",
+             "| Sign | Dataset test (11 signers) | Local held-out takes |", "|---|---|---|"]
+    for l, pc in r["per_class"].items():
+        if l == UNKNOWN:
+            continue
+        ds = pc.get("streaming")
+        loc = lt.get(l)
+        a = f"{ds['correct_first']}/{ds['n']} ({ds['recall']:.0%})" if ds else "disabled"
+        b = (f"{loc['correct_first']}/{loc['n']} ({loc['recall']:.0%})" if loc and loc["n"]
+             else ("disabled" if l not in r["enabled"] else "not recorded"))
+        lines.append(f"| {l} | {a} | {b} |")
+    if idle["unknown_clips"]:
+        lines += ["", f"Local idle takes that triggered any caption: "
+                      f"{idle['unknown_clips_with_emission']}/{idle['unknown_clips']}"]
+    s = r["streaming"]
+    lines += ["", f"Dataset other-sign clips that triggered any caption: "
+                  f"{s['unknown_clips_with_emission']}/{s['unknown_clips']}"]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines) + "\n")
 
 
 def write_markdown(r: dict, doc_out: Path = DOC_OUT) -> None:

@@ -92,7 +92,8 @@ export function useMeetingOutput(opts: { connected: boolean; sendMode: SendMode;
       seen.current.add(ev.id)
       if (seen.current.size > 500) seen.current = new Set([ev.id])
       if (ev.simulated || !enabledRef.current) return
-      if (optsRef.current.sendMode === 'sign') {
+      // A supported phrase is already a full sentence: send it as is, right away.
+      if (ev.phrase || optsRef.current.sendMode === 'sign') {
         void sendText(ev.english, 'recognition')
         return
       }

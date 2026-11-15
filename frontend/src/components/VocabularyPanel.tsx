@@ -1,16 +1,18 @@
 import { CheckCircle2, ChevronDown, CircleSlash } from 'lucide-react'
 import { useState } from 'react'
-import type { ModelInfo, VocabularyEntry } from '../types/interpretation'
+import type { ModelInfo, SupportedPhrase, VocabularyEntry } from '../types/interpretation'
 
 interface Props {
   supported: VocabularyEntry[]
   disabled: VocabularyEntry[]
   model: ModelInfo | null
   loadError: string | null
+  phrases?: SupportedPhrase[]
 }
 
-export function VocabularyPanel({ supported, disabled, model, loadError }: Props) {
+export function VocabularyPanel({ supported, disabled, model, loadError, phrases = [] }: Props) {
   const [showDisabled, setShowDisabled] = useState(false)
+  if (phrases.length > 0 && !loadError) return <PhrasesPanel phrases={phrases} />
   return (
     <section aria-label="Supported vocabulary" className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -76,6 +78,29 @@ export function VocabularyPanel({ supported, disabled, model, loadError }: Props
           )}
         </div>
       )}
+    </section>
+  )
+}
+
+function PhrasesPanel({ phrases }: { phrases: SupportedPhrase[] }) {
+  return (
+    <section aria-label="Supported phrases" className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
+      <div className="mb-3">
+        <h2 className="text-sm font-semibold">Supported phrases</h2>
+        <p className="text-xs text-muted">
+          Sign one of these phrases at a natural pace, then lower your hands. The English sentence is captioned and spoken; anything else is not.
+        </p>
+      </div>
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {phrases.map((p) => (
+          <li key={p.id} className="rounded-xl border border-line px-4 py-3">
+            <p className="text-sm font-medium">“{p.english}”</p>
+            <p className="mt-1.5 inline-flex items-center gap-1 font-mono text-[11px] text-muted">
+              <CheckCircle2 size={12} className="text-accent" aria-hidden /> {p.glosses.join(' ')}
+            </p>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

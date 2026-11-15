@@ -10,7 +10,7 @@ import { VocabularyPanel } from './components/VocabularyPanel'
 import { useInterpretation } from './hooks/useInterpretation'
 import { useMeetingOutput } from './hooks/useMeetingOutput'
 import { fetchModel, fetchVocabulary } from './services/api'
-import { DEFAULT_SETTINGS, type ModelInfo, type Settings, type VocabularyEntry } from './types/interpretation'
+import { DEFAULT_SETTINGS, type ModelInfo, type Settings, type Vocabulary } from './types/interpretation'
 
 const STORAGE_KEY = 'signbridge.settings.v1'
 
@@ -40,7 +40,7 @@ export default function App() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const [dark, setDark] = useState(initialDark)
   const [model, setModel] = useState<ModelInfo | null>(null)
-  const [vocab, setVocab] = useState<{ supported: VocabularyEntry[]; disabled: VocabularyEntry[] }>({ supported: [], disabled: [] })
+  const [vocab, setVocab] = useState<Vocabulary>({ supported: [], disabled: [], phrases: [] })
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const it = useInterpretation(settings)
@@ -101,12 +101,13 @@ export default function App() {
     return () => clearInterval(timer)
   }, [it.connection])
 
+  const phrases = (vocab.phrases?.length ?? 0) > 0
   const running = it.phase === 'running' || it.phase === 'starting'
   const backendDown = it.connection === 'disconnected' || it.connection === 'reconnecting' || it.connection === 'error'
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[1400px] flex-col">
-      <Header connection={it.connection} meetingLive={meeting.enabled} onMuteMeeting={() => void meeting.mute()} onSettings={() => setSettingsOpen(true)} onHelp={() => setAboutOpen(true)} dark={dark} onToggleTheme={() => setDark((d) => !d)} />
+      <Header phrases={phrases} connection={it.connection} meetingLive={meeting.enabled} onMuteMeeting={() => void meeting.mute()} onSettings={() => setSettingsOpen(true)} onHelp={() => setAboutOpen(true)} dark={dark} onToggleTheme={() => setDark((d) => !d)} />
 
       <main className="flex flex-1 flex-col gap-5 px-4 pb-10 sm:px-8">
         {backendDown && (
@@ -172,6 +173,8 @@ export default function App() {
               speechSupported={it.speech.supported}
               onStopSpeech={it.speech.cancel}
               threshold={settings.threshold}
+              phrases={phrases}
+              lastSign={it.lastSign}
             />
           </div>
         </div>
@@ -182,12 +185,13 @@ export default function App() {
           simulatedSession={it.activeMode === 'simulated' && running}
           sendMode={settings.meetingSendMode}
           onSendMode={(meetingSendMode) => update({ meetingSendMode })}
+          phrases={phrases}
         />
 
-        <VocabularyPanel supported={vocab.supported} disabled={vocab.disabled} model={model} loadError={loadError} />
+        <VocabularyPanel supported={vocab.supported} disabled={vocab.disabled} phrases={vocab.phrases} model={model} loadError={loadError} />
 
         <p className="text-center text-xs text-faint">
-          Experimental prototype · limited vocabulary · not a substitute for a qualified interpreter.{' '}
+          Experimental prototype · limited {phrases ? 'phrases' : 'vocabulary'} · not a substitute for a qualified interpreter.{' '}
           <button type="button" className="underline hover:text-ink" onClick={() => setAboutOpen(true)}>
             Learn more
           </button>

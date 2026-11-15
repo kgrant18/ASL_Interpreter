@@ -51,9 +51,22 @@ def _zip() -> RemoteZip:
     return _local.z
 
 
-def build_manifest(targets: list[str] | None = None,
+def parse_glosses(lines: list[str]) -> dict[str, str]:
+    """`GLOSS` or `GLOSS=LABEL` per line (`#` comments). Returns gloss -> model label."""
+    out = {}
+    for line in lines:
+        line = line.split("#", 1)[0].strip()
+        if line:
+            gloss, _, label = line.partition("=")
+            out[gloss.strip()] = (label or gloss).strip()
+    return out
+
+
+def build_manifest(targets: list[str] | dict[str, str] | None = None,
                    unknown_pool: int = UNKNOWN_POOL_SIZE) -> pd.DataFrame:
     targets = targets or TARGET_GLOSSES
+    labels = targets if isinstance(targets, dict) else {t: t for t in targets}
+    targets = list(labels)
     frames = []
     for split in ("train", "val", "test"):
         df = pd.read_csv(DATA_DIR / f"{split}.csv")
@@ -64,7 +77,7 @@ def build_manifest(targets: list[str] | None = None,
         columns={"Participant ID": "participant", "Video file": "video", "Gloss": "gloss"}
     )
     target = all_df[all_df.gloss.isin(targets)].copy()
-    target["label"] = target.gloss
+    target["label"] = target.gloss.map(labels)
 
     others = all_df[~all_df.gloss.isin(targets)]
     # Sample the unknown pool stratified by split so held-out signers stay held-out.
@@ -101,14 +114,19 @@ def main() -> int:
                     help="file with one ASL Citizen gloss per line (default: v1 list)")
     ap.add_argument("--unknown", type=int, default=UNKNOWN_POOL_SIZE)
     ap.add_argument("--manifest", default="manifest.csv")
+    ap.add_argument("--existing", action="store_true",
+                    help="download the clips of an existing manifest instead of building one")
     args = ap.parse_args()
 
     VIDEO_DIR.mkdir(parents=True, exist_ok=True)
-    targets = None
-    if args.glosses:
-        targets = [l.strip() for l in args.glosses.read_text().splitlines() if l.strip()]
-    manifest = build_manifest(targets, args.unknown)
-    manifest.to_csv(DATA_DIR / args.manifest, index=False)
+    if args.existing:
+        manifest = pd.read_csv(DATA_DIR / args.manifest)
+    else:
+        targets = None
+        if args.glosses:
+            targets = parse_glosses(args.glosses.read_text().splitlines())
+        manifest = build_manifest(targets, args.unknown)
+        manifest.to_csv(DATA_DIR / args.manifest, index=False)
     print(f"manifest: {len(manifest)} clips "
           f"({(manifest.label != '_UNKNOWN').sum()} target, "
           f"{(manifest.label == '_UNKNOWN').sum()} unknown-pool)")

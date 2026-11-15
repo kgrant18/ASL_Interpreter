@@ -1,4 +1,4 @@
-import type { ModelInfo, VocabularyEntry } from '../types/interpretation'
+import type { ModelInfo, Vocabulary } from '../types/interpretation'
 
 export const BACKEND_URL: string =
   (import.meta.env.VITE_BACKEND_URL as string | undefined) ?? 'http://localhost:8000'
@@ -19,5 +19,4 @@ async function getJSON<T>(path: string, timeoutMs = 4000): Promise<T> {
 
 export const fetchHealth = () => getJSON<{ status: string; model_loaded: boolean }>('/health')
 export const fetchModel = () => getJSON<ModelInfo>('/api/model')
-export const fetchVocabulary = () =>
-  getJSON<{ supported: VocabularyEntry[]; disabled: VocabularyEntry[] }>('/api/vocabulary')
+export const fetchVocabulary = () => getJSON<Vocabulary>('/api/vocabulary')
