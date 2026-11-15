@@ -21,3 +21,6 @@ backend/models/mediapipe/
 .env
 *.log
 backend/models/*_eval.json
+
+# local model backups (weights, eval reports, manifests)
+backend/models/backup-*/
