@@ -77,6 +77,8 @@ class ZoomRecorder:
         self.fail_first = fail_first
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":          # last-seq probe: not supported by this fake
+            return httpx.Response(404)
         self.requests.append(request)
         if self.fail_first > 0:
             self.fail_first -= 1

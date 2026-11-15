@@ -48,6 +48,8 @@ class Settings:
     tts_engine: str = field(default_factory=lambda: _env("TTS", "auto"))  # auto | piper | say
     phrases_path: Path | None = field(default_factory=_phrases_default)
     device: str = field(default_factory=lambda: _env("DEVICE", "auto"))  # auto | cpu | cuda | mps
+    # Background capture: OpenCV/AVFoundation camera index (0 = first camera).
+    camera_index: int = field(default_factory=lambda: int(_env("CAMERA", "0")))
     max_frame_bytes: int = field(default_factory=lambda: int(_env("MAX_FRAME_BYTES", str(1_000_000))))
     max_frame_pixels: int = 1920 * 1080
     # Run the classifier at most this often (ms); frames still update the buffer.

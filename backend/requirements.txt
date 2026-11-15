@@ -13,3 +13,5 @@ remotezip==0.12.6
 pytest==9.2.0
 httpx==0.28.1
 piper-tts==1.8.0
+# macOS menu-bar status indicator
+rumps==0.4.0; sys_platform == "darwin"

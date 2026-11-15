@@ -195,6 +195,14 @@ export default function App() {
           <button type="button" className="underline hover:text-ink" onClick={() => setAboutOpen(true)}>
             Learn more
           </button>
+          {window.location.hash === '#/browser' && (
+            <>
+              {' · '}
+              <button type="button" className="underline hover:text-ink" onClick={() => { it.stop(); window.location.hash = '' }}>
+                Back to Connect to Zoom
+              </button>
+            </>
+          )}
         </p>
       </main>
 

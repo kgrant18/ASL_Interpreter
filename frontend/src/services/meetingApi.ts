@@ -23,7 +23,15 @@ export interface MeetingStatus {
   virtual_mic: { available: boolean; active: boolean; managed?: boolean; device_name?: string; error: string | null }
   tts: { engine: string; voice: string; available: boolean }
   player_available: boolean
-  zoom: { connected: boolean; endpoint: string | null; seq: number | null }
+  zoom: {
+    connected: boolean
+    endpoint: string | null
+    seq: number | null
+    delivered?: number
+    last_ok_at?: number | null
+    last_error?: string | null
+    last_error_at?: number | null
+  }
   queued: number
   recent: SentItem[]
 }
@@ -36,11 +44,11 @@ export class MeetingApiError extends Error {
   }
 }
 
-async function call<T>(path: string, body?: unknown): Promise<T> {
+async function call<T>(path: string, body?: unknown, prefix = '/api/meeting'): Promise<T> {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), 6000)
   try {
-    const res = await fetch(BACKEND_URL + '/api/meeting' + path, {
+    const res = await fetch(BACKEND_URL + prefix + path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -65,4 +73,40 @@ export const meetingApi = {
   virtualMic: (action: 'create' | 'remove') => call<MeetingStatus>('/virtual-mic', { action }),
   send: (text: string, source: SentItem['source']) =>
     call<{ id: string; status: MeetingStatus }>('/send', { text, source, simulated: false }),
+}
+
+export interface PhraseEvent {
+  id: string
+  english: string
+  glosses: string[]
+  score: number
+  at: number
+  sent: boolean
+}
+
+export interface CaptureStatus {
+  running: boolean
+  started_at: number | null
+  camera: { state: 'off' | 'starting' | 'on' | 'error'; error: string | null; index: number; width: number; height: number; fps: number }
+  recognition: {
+    state: string
+    hands_visible: number
+    shoulders_visible: boolean
+    last_sign: string | null
+    pending: string[]
+  }
+  history: PhraseEvent[]
+}
+
+export interface BackgroundStatus {
+  capture: CaptureStatus
+  meeting: MeetingStatus | null
+}
+
+const BG = '/api/background'
+export const backgroundApi = {
+  status: () => call<BackgroundStatus>('/status', undefined, BG),
+  start: () => call<BackgroundStatus>('/start', {}, BG),
+  stop: () => call<BackgroundStatus>('/stop', {}, BG),
+  testCaption: () => call<BackgroundStatus>('/test-caption', {}, BG),
 }

@@ -118,12 +118,23 @@ describe('supported phrases', () => {
 describe('local recorder route', () => {
   it('is only reachable through the hidden route / shortcut', async () => {
     const user = userEvent.setup()
+    window.location.hash = ''
     render(<Root />)
-    await act(async () => sock().open())
+    expect(await screen.findByText('SignBridge for Zoom')).toBeInTheDocument()   // default: Connect to Zoom
     expect(screen.queryByRole('button', { name: /start camera/i })).not.toBeInTheDocument()
     await user.keyboard('{Control>}{Alt>}r{/Alt}{/Control}')
     expect(await screen.findByRole('button', { name: /start camera/i })).toBeInTheDocument()
     expect(screen.getAllByText('0/25')).toHaveLength(6)
     expect(screen.getByText('0/30')).toBeInTheDocument()
+  })
+})
+
+describe('in-browser camera route', () => {
+  it('keeps the browser interpretation screen at #/browser', async () => {
+    window.location.hash = '#/browser'
+    render(<Root />)
+    await act(async () => sock().open())
+    expect(await screen.findByRole('button', { name: /start interpreting/i })).toBeInTheDocument()
+    window.location.hash = ''
   })
 })

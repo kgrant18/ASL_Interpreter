@@ -82,7 +82,7 @@ export function VocabularyPanel({ supported, disabled, model, loadError, phrases
   )
 }
 
-function PhrasesPanel({ phrases }: { phrases: SupportedPhrase[] }) {
+export function PhrasesPanel({ phrases }: { phrases: SupportedPhrase[] }) {
   return (
     <section aria-label="Supported phrases" className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
       <div className="mb-3">

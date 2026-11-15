@@ -148,6 +148,14 @@ class MeetingOutput:
             if self.zoom is None:
                 self.config.captions = False
 
+    def test_caption(self, text: str = "SignBridge captions are connected.") -> None:
+        """Post one caption right now (outside the queue) so the host can check the token."""
+        with self._lock:
+            zoom = self.zoom
+        if zoom is None:
+            raise LookupError("paste a Zoom caption API token first")
+        zoom.post(text)
+
     def mute(self) -> None:
         """Master off + drop queue + stop current speech."""
         self.update(enabled=False)
@@ -247,7 +255,12 @@ class MeetingOutput:
             "player_available": self.player.available(),
             "zoom": {"connected": self.zoom is not None,
                      "endpoint": self.zoom.redacted() if self.zoom else None,
-                     "seq": self.zoom.seq if self.zoom else None},
+                     "seq": self.zoom.seq if self.zoom else None,
+                     "delivered": getattr(self.zoom, "delivered", 0) if self.zoom else 0,
+                     "last_ok_at": getattr(self.zoom, "last_ok_at", None) if self.zoom else None,
+                     "last_error": getattr(self.zoom, "last_error", None) if self.zoom else None,
+                     "last_error_at": (getattr(self.zoom, "last_error_at", None)
+                                       if self.zoom else None)},
             "queued": self._q.qsize(),
             "recent": [asdict(i) for i in list(self.log)[:10]],
         }

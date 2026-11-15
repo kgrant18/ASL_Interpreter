@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react'
 import App from './App'
+import { ConnectPage } from './components/ConnectPage'
 import { RecordPage } from './components/RecordPage'
+import { backgroundApi } from './services/meetingApi'
 
 const RECORD_HASH = '#/record'
+export const BROWSER_HASH = '#/browser'
 
-/** Routes between the app and the local recorder (#/record, or Ctrl+Option+R). */
+/**
+ * Routes:
+ *   (default)   Connect to Zoom — the backend reads the camera, works while minimized
+ *   #/browser   in-browser camera (fallback; needs the tab visible)
+ *   #/record    local recorder (also Ctrl+Option+R)
+ */
 export default function Root() {
   const [hash, setHash] = useState(() => window.location.hash)
   useEffect(() => {
@@ -23,5 +31,13 @@ export default function Root() {
     }
   }, [])
   if (hash === RECORD_HASH) return <RecordPage onExit={() => (window.location.hash = '')} />
-  return <App />
+  if (hash === BROWSER_HASH) return <App />
+  return (
+    <ConnectPage
+      onUseBrowser={() => {
+        // Only one capture path at a time, so a sentence is never sent twice.
+        void backgroundApi.stop().catch(() => undefined).finally(() => (window.location.hash = BROWSER_HASH))
+      }}
+    />
+  )
 }

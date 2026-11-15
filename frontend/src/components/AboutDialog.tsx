@@ -6,7 +6,7 @@ import { Logo } from './Header'
 export const DISCLAIMER =
   'SignBridge is an experimental ASL recognition prototype supporting a limited vocabulary. It is not a substitute for a qualified interpreter, particularly in medical, legal, emergency, or other high-stakes settings.'
 
-export function AboutDialog({ open, onClose, model }: { open: boolean; onClose: () => void; model: ModelInfo | null }) {
+export function AboutDialog({ open, onClose, model }: { open: boolean; onClose: () => void; model?: ModelInfo | null }) {
   const ref = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
     if (!open) return

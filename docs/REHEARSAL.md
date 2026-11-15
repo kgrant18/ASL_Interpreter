@@ -3,8 +3,12 @@
 Run through this the evening before and again ~30 minutes before presenting, on the
 same Mac, camera, seat and lighting you'll present with.
 
+Zoom setup (host settings, caption token, participant captions, 2-minute test): [ZOOM_SETUP.md](ZOOM_SETUP.md).
+The default screen is **Connect to Zoom** (backend camera, works minimized). The steps below about
+"Start interpreting" / "Send to meeting" apply to the in-browser fallback at `#/browser`.
+
 ## 1. Start the app (2 min)
-- [ ] `./scripts/dev.sh`, then open **http://localhost:5173** in Chrome.
+- [ ] In **Terminal**: `./scripts/dev.sh`, then open **http://localhost:5173** in Chrome. Menu bar shows `○ SignBridge`.
 - [ ] Header shows **Backend connected**; the **Supported phrases** panel lists all five phrases.
 - [ ] **Settings → Test speech** is audible on your speakers.
 - [ ] Close other apps that might grab the camera exclusively (FaceTime, Photo Booth). Zoom and Chrome can share the camera on macOS.

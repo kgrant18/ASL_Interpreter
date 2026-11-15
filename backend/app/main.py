@@ -11,7 +11,8 @@ os.environ.setdefault("GLOG_minloglevel", "2")  # quiet MediaPipe/LiteRT logs
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
-from .api import meeting, routes, websocket  # noqa: E402
+from .api import background, meeting, routes, websocket  # noqa: E402
+from .capture.background import BackgroundRecognizer  # noqa: E402
 from .config import settings  # noqa: E402
 from .meeting.service import MeetingOutput  # noqa: E402
 from .meeting.tts import make_tts  # noqa: E402
@@ -31,16 +32,24 @@ async def lifespan(app: FastAPI):
     own_meeting = getattr(app.state, "meeting", None) is None
     if own_meeting:
         app.state.meeting = MeetingOutput(make_tts(settings.tts_voice_path, settings.tts_engine))
+    own_bg = getattr(app.state, "background", None) is None
+    if own_bg:
+        app.state.background = BackgroundRecognizer(settings, rec,
+                                                     on_phrase=background.make_on_phrase(app))
     yield
+    if own_bg:
+        app.state.background.stop()
+        app.state.background = None
     if own_meeting:
         app.state.meeting.close()
         app.state.meeting = None
 
 
-def create_app(recognizer=None, meeting_output=None) -> FastAPI:
+def create_app(recognizer=None, meeting_output=None, background_capture=None) -> FastAPI:
     app = FastAPI(title="SignBridge", version="0.2.0", lifespan=lifespan)
     app.state.recognizer = recognizer
     app.state.meeting = meeting_output
+    app.state.background = background_capture
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -49,6 +58,7 @@ def create_app(recognizer=None, meeting_output=None) -> FastAPI:
     )
     app.include_router(routes.router)
     app.include_router(meeting.router)
+    app.include_router(background.router)
     app.include_router(websocket.router)
     return app
 

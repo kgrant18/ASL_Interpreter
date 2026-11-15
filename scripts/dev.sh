@@ -16,10 +16,12 @@ for port in 8000 5173; do
 done
 
 pids=()
+indicator=""
 cleanup() {
   trap - INT TERM EXIT
   echo
   echo "Stopping SignBridge…"
+  [[ -n "$indicator" ]] && kill -TERM "$indicator" 2>/dev/null || true
   for p in "${pids[@]}"; do
     pkill -TERM -P "$p" 2>/dev/null || true   # children first (no orphans)
     kill -TERM "$p" 2>/dev/null || true
@@ -37,6 +39,13 @@ for i in $(seq 1 40); do
   curl -sf http://127.0.0.1:8000/health >/dev/null 2>&1 && break
   sleep 0.5
 done
+
+# macOS: menu-bar status indicator (stays visible while Zoom is in front).
+if [[ "$(uname)" == "Darwin" && "${SIGNBRIDGE_INDICATOR:-1}" != "0" ]] \
+   && backend/.venv/bin/python -c "import rumps" 2>/dev/null; then
+  (cd backend && exec .venv/bin/python -m app.statusbar) &
+  indicator=$!
+fi
 
 echo
 echo "  SignBridge is running"

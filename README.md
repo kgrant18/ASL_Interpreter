@@ -58,7 +58,26 @@ Using ASL Citizen means accepting the [Microsoft Research License Terms](https:/
 
 Then open **http://localhost:5173**. The backend runs on `http://localhost:8000` (`/health`, `/api/model`, `/api/vocabulary`, `WS /ws/interpret`). Ctrl+C stops both servers. Both bind to `127.0.0.1` only.
 
-## Using webcam mode
+## Using SignBridge in Zoom (default screen)
+
+http://localhost:5173 opens **Connect to Zoom**. The backend reads the camera itself (OpenCV / AVFoundation), so
+recognition keeps running while the SignBridge window is minimized and Zoom is in front, and Zoom can keep using
+the camera at the same time.
+
+1. Zoom microphone = **BlackHole 2ch**; optionally paste the Zoom caption API token and click **Test caption**.
+2. Click **Start** and check the Camera / Recognition / Voice / Captions tiles and the framing view.
+3. Minimize SignBridge. The macOS **menu-bar icon** (`● SignBridge`) shows status and has **Stop sending to the call**.
+4. Each recognized sentence is spoken into the call once and posted once as a Zoom caption.
+
+The first Start asks for camera permission for **Terminal** (or whichever app runs `./scripts/dev.sh`).
+`SIGNBRIDGE_CAMERA=1` picks another camera; `SIGNBRIDGE_INDICATOR=0` disables the menu-bar icon.
+Host settings, participant steps and a 2-minute test are in [docs/ZOOM_SETUP.md](docs/ZOOM_SETUP.md).
+
+## Using webcam mode (in-browser camera, fallback)
+
+Open **Use the in-browser camera instead** at the bottom of the Connect page (or http://localhost:5173/#/browser).
+This mode needs the browser tab to stay visible: browsers pause hidden tabs.
+
 
 1. Choose **Webcam** and click **Start Interpreting**, then allow camera access.
 2. Sit so your **head, shoulders and both hands** are in frame, with even lighting.
@@ -137,7 +156,7 @@ Details: [docs/MODEL_DECISION.md](docs/MODEL_DECISION.md) and [docs/EVALUATION.m
 ## Testing
 
 ```bash
-make test              # backend (pytest, 115 tests) + frontend (vitest, 28 tests)
+make test              # backend (pytest, 136 tests) + frontend (vitest, 39 tests)
 make test-backend
 make test-frontend
 make check             # environment report
