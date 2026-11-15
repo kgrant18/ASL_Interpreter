@@ -37,7 +37,7 @@ The token is tied to one meeting. **If the meeting ends and restarts, copy a new
 ## Participants: turn captions on
 Each participant clicks **Captions** (CC) in the toolbar → **Show captions**
 (phone app: **More** → **Captions** / **Closed Caption** → on). The caption appears as
-`[SignBridge] I have an idea.`
+`I have an idea.`
 
 ## Start
 1. Zoom → Settings → Audio: **Microphone = BlackHole 2ch**, untick *Automatically adjust microphone volume*,
@@ -54,7 +54,7 @@ Second participant = a teammate, or your phone joined to the meeting with sound 
 
 | Time | Do | Expect |
 |---|---|---|
-| 0:00 | Start the meeting, paste token, **Test caption** | Phone shows `[SignBridge] SignBridge captions are connected.` (after turning on captions) |
+| 0:00 | Start the meeting, paste token, **Test caption** | Phone shows `SignBridge captions are connected.` (after turning on captions) |
 | 0:20 | SignBridge **Start**, then **Send test sentence** | Phone hears "SignBridge is connected." and sees it as a caption |
 | 0:40 | Minimize SignBridge, Zoom in front, your video on | Phone still sees your video; menu bar shows `● SignBridge` |
 | 0:50 | Sign the 5 sentences, hands down for ~2 s after each | Each sentence is heard **once** and captioned **once** on the phone |

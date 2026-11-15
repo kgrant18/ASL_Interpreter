@@ -38,7 +38,7 @@ class MeetingConfig:
     enabled: bool = False          # master switch
     speech: bool = True            # speak into the virtual microphone
     captions: bool = False         # post to Zoom (needs a token)
-    caption_prefix: bool = True    # prefix captions with "[SignBridge]"
+    caption_prefix: bool = False   # captions are the signer's own words; opt-in "[SignBridge]" prefix
     local_monitor: bool = False    # also play speech on this computer's speakers
 
 

@@ -29,7 +29,7 @@ Sign PLEASE, lower your hands, sign WATER, lower your hands, then sign WATER aga
 **1:50–2:15 · Into the call**
 Beforehand, create the virtual microphone and select **SignBridge Virtual Microphone** as the mic in Zoom on the signer's laptop. Have a second device in the meeting, with its sound on, facing the audience. If you have a caption token, connect it.
 - Click **Start sending to call** and point at the red LIVE badge.
-- Sign WHERE, then the next sign, and lower your hands. The pending line shows the signs, and the phrase is spoken in Zoom on the second device, with a `[SignBridge]` caption.
+- Sign WHERE, then the next sign, and lower your hands. The pending line shows the signs, and the phrase is spoken in Zoom on the second device, with a matching caption.
 - Press **Ctrl+Shift+M** to show the instant stop.
 
 **2:15–2:40 · How it works**

@@ -216,7 +216,7 @@ def test_start_runs_capture_and_turns_on_voice_and_captions(api):
     assert wait_for(lambda: bg.status()["history"])
     (item,) = wait_done(svc)
     assert item.text == "I have an idea." and item.speech == "sent" and item.caption == "sent"
-    assert zoom.posts[0].content == b"[SignBridge] I have an idea."
+    assert zoom.posts[0].content == b"I have an idea."
     st = c.post("/api/background/stop", headers=UI).json()
     assert not st["capture"]["running"] and not st["meeting"]["config"]["enabled"]
 

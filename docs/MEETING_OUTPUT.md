@@ -56,7 +56,7 @@ Voices: the default is the offline Piper voice (`en_US-ljspeech-medium`). `SIGNB
 - **Visible state.** A red **LIVE TO CALL** badge shows in the header and on the panel whenever output is on.
 - **Instant stop.** Press **Ctrl+Shift+M** or use the *Stop sending* button. This drops queued items and cuts off the sentence currently playing.
 - **Simulated output is never sent.** The UI blocks it, and the backend refuses `simulated: true` with a 400.
-- **Caption prefix.** `[SignBridge]` is on by default, so participants know the captions are machine-generated.
+- **Caption prefix.** Off by default, so captions read as the signer's own words. `caption_prefix: true` adds `[SignBridge]` in front of captions (never spoken).
 - **Delivery log.** "Sent to call" shows each item with its voice and caption status (sent / off / failed, with the reason).
 - **Origin check.** State-changing endpoints reject other web origins with a 403. The backend binds to 127.0.0.1.
 

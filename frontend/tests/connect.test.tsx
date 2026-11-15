@@ -15,7 +15,7 @@ function snapshot(over: { capture?: Partial<BackgroundStatus['capture']>; zoom?:
       ...over.capture,
     },
     meeting: {
-      config: { enabled: over.enabled ?? false, speech: true, captions: over.captions ?? false, caption_prefix: true, local_monitor: false },
+      config: { enabled: over.enabled ?? false, speech: true, captions: over.captions ?? false, caption_prefix: false, local_monitor: false },
       virtual_mic: { available: true, active: true, managed: false, device_name: 'BlackHole 2ch', error: null },
       tts: { engine: 'say', voice: 'Samantha', available: true },
       player_available: true,

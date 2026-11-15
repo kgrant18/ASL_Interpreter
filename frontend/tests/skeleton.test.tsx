@@ -106,7 +106,7 @@ describe('Show skeleton toggle', () => {
     const status = {
       capture: { running: true, started_at: 1, camera: { state: 'on', error: null, index: 0, width: 640, height: 480, fps: 15 },
         recognition: { state: 'no_hands', hands_visible: 0, shoulders_visible: true, last_sign: null, pending: [] }, history: [] },
-      meeting: { config: { enabled: false, speech: true, captions: false, caption_prefix: true, local_monitor: false },
+      meeting: { config: { enabled: false, speech: true, captions: false, caption_prefix: false, local_monitor: false },
         virtual_mic: { available: true, active: true, device_name: 'BlackHole 2ch', error: null }, tts: { engine: 'say', voice: 'x', available: true },
         player_available: true, zoom: { connected: false, endpoint: null, seq: null }, queued: 0, recent: [] },
     }

@@ -162,16 +162,17 @@ def test_speech_and_captions_delivered(svc, zoom):
     assert item.speech == "sent" and item.caption == "sent"
     assert svc.tts.spoken == ["Hello."]
     assert svc.player.played == [["signbridge_speech"]]
-    assert zoom.requests[0].content == b"[SignBridge] Hello."
+    assert zoom.requests[0].content == b"Hello."  # the signer's own words, no prefix by default
 
 
-def test_local_monitor_and_no_prefix(svc, zoom):
+def test_local_monitor_and_optional_prefix(svc, zoom):
     svc.set_zoom_token(TOKEN)
-    svc.update(enabled=True, captions=True, caption_prefix=False, local_monitor=True)
+    svc.update(enabled=True, captions=True, caption_prefix=True, local_monitor=True)
     svc.send("Hi.", "typed")
     wait_done(svc)
     assert svc.player.played == [["signbridge_speech", None]]
-    assert zoom.requests[0].content == b"Hi."
+    assert svc.tts.spoken == ["Hi."]  # speech never carries the prefix
+    assert zoom.requests[0].content == b"[SignBridge] Hi."
 
 
 def test_missing_virtual_mic_reports_failure(svc):
@@ -229,7 +230,7 @@ def test_api_status_and_flow(client, svc, zoom):
     r = client.post("/api/meeting/send", json={"text": "Hello.", "source": "recognition"}, headers=UI)
     assert r.status_code == 200
     wait_done(svc)
-    assert zoom.requests[-1].content == b"[SignBridge] Hello."
+    assert zoom.requests[-1].content == b"Hello."
     assert client.post("/api/meeting/mute", json={}, headers=UI).json()["config"]["enabled"] is False
 
 

@@ -79,11 +79,11 @@ export const vocabInfo = { phrases: [] as { id: string; english: string; glosses
 export const meeting = {
   sends: [] as { text: string; source: string; simulated: boolean }[],
   calls: [] as string[],
-  config: { enabled: false, speech: true, captions: false, caption_prefix: true, local_monitor: false },
+  config: { enabled: false, speech: true, captions: false, caption_prefix: false, local_monitor: false },
   reset() {
     this.sends.length = 0
     this.calls.length = 0
-    this.config = { enabled: false, speech: true, captions: false, caption_prefix: true, local_monitor: false }
+    this.config = { enabled: false, speech: true, captions: false, caption_prefix: false, local_monitor: false }
   },
   status() {
     return {
