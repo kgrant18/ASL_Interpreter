@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConnectPage, indicators } from '../src/components/ConnectPage'
@@ -111,6 +111,9 @@ beforeEach(() => {
           return respond(200, s.meeting)
         case '/api/vocabulary':
           return respond(200, { supported: [], disabled: [], phrases: [{ id: 'idea', english: 'I have an idea.', glosses: ['ME', 'HAVE', 'IDEA'] }] })
+        case '/api/meeting/config':
+          if (init?.body) Object.assign(s.meeting!.config, JSON.parse(String(init.body)))
+          return respond(200, s.meeting)
         default:
           return respond(200, s.meeting)
       }
@@ -126,8 +129,28 @@ describe('Connect to Zoom page', () => {
     expect(backend.calls).toContain('/api/background/start')
     expect(await screen.findByLabelText(/Camera: On/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /live in call/i })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /^stop$/i }))
+    await user.click(screen.getByRole('button', { name: /end session/i }))
     expect(backend.calls).toContain('/api/background/stop')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Connect to Zoom' })).toBeInTheDocument()
+  })
+
+  it('one toggle in the Last sent card pauses and resumes sending', async () => {
+    const user = userEvent.setup()
+    backend.state.capture.running = true
+    backend.state.capture.camera = { state: 'on', error: null, index: 0, width: 640, height: 480, fps: 15 }
+    backend.state.meeting!.config.enabled = true
+    render(<ConnectPage onUseBrowser={() => undefined} />)
+    const card = await screen.findByRole('region', { name: 'Last sent' })
+    const live = await within(card).findByRole('button', { name: 'Live in call · Pause' })
+    await user.click(live)
+    expect(backend.calls).toContain('/api/meeting/mute')
+    const paused = await within(card).findByRole('button', { name: 'Paused · Resume' })
+    expect(screen.queryByRole('button', { name: /live in call/i })).not.toBeInTheDocument()
+    await user.click(paused)
+    expect(backend.calls).toContain('/api/meeting/config')
+    // the header keeps End session; the card no longer has a Stop button
+    expect(within(card).queryByRole('button', { name: /stop|end session/i })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: /end session/i })).toBeInTheDocument()
   })
 
   it('Ctrl+Shift+M stops sending to the call', async () => {

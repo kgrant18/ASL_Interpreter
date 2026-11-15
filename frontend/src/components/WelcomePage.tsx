@@ -20,12 +20,12 @@ export function WelcomePage({ onBegin }: { onBegin: () => void }) {
           type="button"
           onClick={onBegin}
           autoFocus
-          className="mt-12 inline-flex items-center gap-2 rounded-xl bg-accent px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+          className="btn btn-primary mt-12 px-8"
         >
           Begin <ArrowRight size={18} aria-hidden />
         </button>
       </main>
-      <footer className="mx-auto max-w-2xl pb-8 text-center text-xs leading-relaxed text-faint">
+      <footer className="t-meta mx-auto max-w-2xl pb-8 text-center leading-relaxed">
         {DISCLAIMER}{' '}
         <button type="button" className="underline hover:text-ink" onClick={() => setAboutOpen(true)}>
           Learn more

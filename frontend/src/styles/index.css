@@ -33,6 +33,49 @@
   --color-danger-soft: #3a211c;
 }
 
+/*
+ * Shared UI tokens (one place for spacing, type scale and buttons).
+ *   spacing: card padding 32px · gap between cards 24px (gap-6) · gap inside cards 16px (.stack)
+ *   type:    .t-display (last-sent sentence only) · .t-title (card titles, status labels)
+ *            .t-strong (item text / values) · .t-body (descriptions) · .t-meta (times, devices)
+ *   buttons: .btn + .btn-primary | .btn-secondary | .btn-danger, all 44px tall, same radius
+ */
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface p-8;
+  }
+  .stack {
+    @apply flex flex-col gap-4;
+  }
+  .t-display {
+    @apply text-4xl font-bold tracking-tight text-ink sm:text-5xl;
+  }
+  .t-title {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted;
+  }
+  .t-strong {
+    @apply text-sm font-semibold text-ink;
+  }
+  .t-body {
+    @apply text-sm leading-relaxed text-muted;
+  }
+  .t-meta {
+    @apply text-xs text-faint;
+  }
+  .btn {
+    @apply inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-accent text-surface hover:opacity-90;
+  }
+  .btn-secondary {
+    @apply border border-line bg-surface text-ink hover:bg-canvas;
+  }
+  .btn-danger {
+    @apply bg-danger text-surface hover:opacity-90;
+  }
+}
+
 html,
 body,
 #root {

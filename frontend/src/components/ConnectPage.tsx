@@ -153,23 +153,25 @@ const timeOf = (at: number) => new Date(at * 1000).toLocaleTimeString([], { hour
 
 // ---------- small pieces ----------
 
-const H2 = 'text-sm font-semibold text-ink'
-const BTN = 'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50'
-const BTN_SECONDARY = `${BTN} border border-line px-3.5 py-2 text-ink hover:bg-canvas`
-const CARD = 'rounded-2xl border border-line bg-surface p-5 sm:p-6'
+// Shared tokens live in styles/index.css (.card, .stack, .t-*, .btn-*).
+const H2 = 't-title'
+const CARD = 'card stack'
+const BTN_PRIMARY = 'btn btn-primary'
+const BTN_SECONDARY = 'btn btn-secondary'
+const BTN_DANGER = 'btn btn-danger'
 
 function StatusRow({ ind, srOnly = false }: { ind: Record<Keys, Indicator>; srOnly?: boolean }) {
   return (
-    <ul className={srOnly ? 'sr-only' : 'grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-line bg-surface px-5 py-3 sm:grid-cols-4'} aria-label="Status">
+    <ul className={srOnly ? 'sr-only' : 'card grid grid-cols-2 gap-4 sm:grid-cols-4'} aria-label="Status">
       {KEYS.map((k) => (
         <li key={k} aria-label={`${LABELS[k]}: ${ind[k].text}`} title={ind[k].detail ?? ind[k].text} className="flex min-w-0 items-start gap-2">
-          <span className={`mt-[7px] inline-block h-2 w-2 shrink-0 rounded-full ${DOT[ind[k].tone]}`} aria-hidden />
-          <span className="min-w-0">
-            <span className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-faint">
+          <span className={`mt-[3px] inline-block h-2 w-2 shrink-0 rounded-full ${DOT[ind[k].tone]}`} aria-hidden />
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="t-title flex items-center gap-1">
               {ICONS[k]} {LABELS[k]}
             </span>
-            <span className={`block truncate text-sm font-semibold ${ind[k].tone === 'bad' ? 'text-danger' : 'text-ink'}`}>{ind[k].short}</span>
-            {ind[k].sub && <span className="block truncate text-xs text-faint">{ind[k].sub}</span>}
+            <span className={`t-strong block truncate ${ind[k].tone === 'bad' ? '!text-danger' : ''}`}>{ind[k].short}</span>
+            {ind[k].sub && <span className="t-meta block truncate">{ind[k].sub}</span>}
           </span>
         </li>
       ))}
@@ -255,13 +257,15 @@ function PositionCheck({ tick, f, cameraIndex, heading = false }: { tick: number
       return !on
     })
   return (
-    <div className="space-y-3">
+    <div className="stack">
       {heading && <h2 className={H2}>Position check</h2>}
-      <div>
-        <FramingBadge f={f} />
-      </div>
-      <p className="text-sm text-muted">Head, both shoulders and both hands in view, about an arm's length from the camera.</p>
-      <div className="relative aspect-[4/3] w-full max-w-[640px] overflow-hidden rounded-xl bg-canvas" title="Camera view">
+      {f && (
+        <div>
+          <FramingBadge f={f} />
+        </div>
+      )}
+      <p className="t-body">Head, both shoulders and both hands in view, about an arm's length from the camera.</p>
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-canvas" title="Camera view">
         <div className={`absolute inset-0 -scale-x-100 ${smooth ? '' : 'hidden'}`}>
           <video ref={videoRef} muted playsInline aria-hidden={!smooth} className="h-full w-full object-cover" />
           {smooth && skeleton && <SkeletonCanvas lm={lm} videoRef={videoRef} />}
@@ -271,7 +275,7 @@ function PositionCheck({ tick, f, cameraIndex, heading = false }: { tick: number
         )}
       </div>
       {smooth && (
-        <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted">
+        <label className="t-body inline-flex w-fit cursor-pointer items-center gap-2">
           <input type="checkbox" checked={skeleton} onChange={toggle} className="accent-[var(--color-accent)]" />
           Show skeleton
         </label>
@@ -283,24 +287,24 @@ function PositionCheck({ tick, f, cameraIndex, heading = false }: { tick: number
 function History({ items, showStatus, onClear }: { items: PhraseEvent[]; showStatus: boolean; onClear: () => void }) {
   return (
     <section aria-label="Recognized in this session" className={CARD}>
-      <div className="flex items-center justify-between">
+      <div className="flex min-h-7 items-center justify-between gap-4">
         <h2 className={H2}>Recent</h2>
         {items.length > 0 && (
-          <button type="button" onClick={onClear} className="text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline">
+          <button type="button" onClick={onClear} className="t-meta font-medium underline-offset-2 hover:text-ink hover:underline">
             Clear
           </button>
         )}
       </div>
       {items.length === 0 ? (
-        <p className="mt-2 text-sm text-faint">Nothing yet.</p>
+        <p className="t-body">Nothing yet.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-line">
+        <ul className="-my-3 divide-y divide-line">
           {items.map((h) => (
-            <li key={h.id} className="flex items-baseline justify-between gap-3 py-2.5">
-              <p className="text-[15px] font-medium" title={h.glosses.join(' ')}>
+            <li key={h.id} className="flex items-baseline justify-between gap-4 py-3">
+              <p className="t-strong" title={h.glosses.join(' ')}>
                 {h.english}
               </p>
-              <span className="shrink-0 text-xs text-faint">
+              <span className="t-meta shrink-0">
                 {timeOf(h.at)}
                 {showStatus && (h.sent ? ' · sent to call' : ' · not sent')}
               </span>
@@ -315,20 +319,22 @@ function History({ items, showStatus, onClear }: { items: PhraseEvent[]; showSta
 function Phrases({ phrases, defaultOpen }: { phrases: SupportedPhrase[]; defaultOpen: boolean }) {
   if (phrases.length === 0) return null
   return (
-    <details open={defaultOpen} className={`${CARD} group`}>
-      <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+    <details open={defaultOpen} className="card group">
+      <summary className="flex min-h-7 cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
         <h2 className={H2}>Supported phrases</h2>
         <ChevronDown size={16} className="text-muted transition-transform group-open:rotate-180" aria-hidden />
       </summary>
-      <p className="mt-1 text-xs text-muted">Sign one at a natural pace, then lower your hands. Anything else is not spoken.</p>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-        {phrases.map((p) => (
-          <li key={p.id} className="rounded-xl bg-canvas px-4 py-2.5">
-            <p className="text-sm font-medium">{p.english}</p>
-            <p className="mt-0.5 font-mono text-[11px] text-faint">{p.glosses.join(' ')}</p>
-          </li>
-        ))}
-      </ul>
+      <div className="stack mt-4">
+        <p className="t-body">Sign one at a natural pace, then lower your hands. Anything else is not spoken.</p>
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {phrases.map((p) => (
+            <li key={p.id} className="flex flex-col gap-1 rounded-xl bg-canvas px-4 py-3">
+              <p className="t-strong">{p.english}</p>
+              <p className="t-meta font-mono">{p.glosses.join(' ')}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
     </details>
   )
 }
@@ -344,9 +350,9 @@ function Step({ n, done, warn, title, children }: { n: number; done: boolean; wa
       >
         {done ? <Check size={15} strokeWidth={3} aria-hidden /> : n}
       </span>
-      <div className="min-w-0 flex-1">
-        <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
-        <div className="mt-1 text-sm text-muted">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
+        <h3 className="t-strong">{title}</h3>
+        <div className="t-body">{children}</div>
       </div>
     </li>
   )
@@ -470,32 +476,36 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
       await backgroundApi.start()
       await meetingApi.mute() // camera only: nothing is sent until Start
     })
+  // Same calls as before: Pause = mute, Resume = re-enable; the menu-bar icon and
+  // Ctrl+Shift+M change the same backend flag, so this toggle follows them on the next poll.
+  const pause = () => run('mute', () => meetingApi.mute(), 'Stopped sending to the call.')
+  const resume = () => run('resume', () => meetingApi.config({ enabled: true, speech: true, captions: zoomConnected }))
+  const endSession = () =>
+    run('stop', async () => {
+      await backgroundApi.stop()
+      setChecking(false)
+    })
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[880px] flex-col">
-      <header className="flex items-center justify-between gap-4 px-5 py-4 sm:px-8">
-        <div className="flex items-center gap-2.5">
-          <Logo className="h-[31px] w-[31px]" />
-          <span className="text-[19px] font-semibold tracking-tight">SignBridge</span>
+      <header className="flex items-center justify-between gap-4 px-4 py-6 sm:px-8">
+        <div className="flex items-center gap-3">
+          <Logo className="h-[46px] w-[46px]" />
+          <span className="text-[28px] font-semibold tracking-tight">SignBridge</span>
         </div>
         <div className="flex items-center gap-2">
-          {live && sending && (
-            <button type="button" onClick={() => void run('mute', () => meetingApi.mute(), 'Stopped sending to the call.')} title="Stop sending (Ctrl+Shift+M)" className="inline-flex items-center gap-1.5 rounded-full bg-danger px-2.5 py-1 text-xs font-semibold text-white">
-              <Radio size={12} className="animate-pulse" /> Live in call · Stop
+          {live && (
+            <button type="button" disabled={busy !== null} onClick={() => void endSession()} className={BTN_DANGER}>
+              {busy === 'stop' ? <Loader2 size={14} className="animate-spin" /> : <Square size={13} />} End session
             </button>
           )}
-          {live && !sending && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-warn-soft px-2.5 py-1 text-xs font-semibold text-warn">
-              <Pause size={12} aria-hidden /> Paused
-            </span>
-          )}
-          <button type="button" onClick={() => setAboutOpen(true)} aria-label="About and help" className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-ink">
-            <CircleHelp size={18} />
+          <button type="button" onClick={() => setAboutOpen(true)} aria-label="About and help" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-ink">
+            <CircleHelp size={20} />
           </button>
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-5 px-4 pb-10 sm:px-8">
+      <main className="flex flex-1 flex-col gap-6 px-4 pb-10 sm:px-8">
         {error && (
           <p role="alert" className="flex items-start gap-2 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
             <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden /> {error}
@@ -518,14 +528,14 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
           </p>
         ) : !live ? (
           <>
-            <div className="pt-2">
+            <div className="flex flex-col gap-1">
               <h1 className="text-2xl font-semibold tracking-tight">Connect to Zoom</h1>
-              <p className="mt-1 text-sm text-muted">Three quick checks, then Start. Each one ticks itself off.</p>
+              <p className="t-body">Three quick checks, then Start. Each one ticks itself off.</p>
             </div>
             <StatusRow ind={ind} srOnly />
 
-            <section aria-label="Setup" className={CARD}>
-              <ol className="space-y-6">
+            <section aria-label="Setup" className="card flex flex-col gap-8">
+              <ol className="flex flex-col gap-6">
                 <Step n={1} done={micOk} title={micOk ? `Voice: ${device} detected` : 'Voice: install BlackHole 2ch'}>
                   In Zoom → Settings → Audio, set <strong className="font-medium text-ink">Microphone</strong> to <strong className="font-medium text-ink">{device}</strong>.
                   {!micOk && status?.meeting?.virtual_mic.error && <span className="mt-1 block text-danger">{status.meeting.virtual_mic.error}</span>}
@@ -542,7 +552,7 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
                     <strong className="font-medium text-ink">Copy the API token</strong>. A new meeting means a new token.
                   </p>
                   <form
-                    className="mt-2 flex flex-wrap gap-2"
+                    className="mt-4 flex flex-wrap gap-2"
                     onSubmit={(e) => {
                       e.preventDefault()
                       void run(
@@ -565,7 +575,7 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
                       value={token}
                       onChange={(e) => setToken(e.target.value)}
                       placeholder={zoomConnected ? 'Token saved — paste a new one to replace it' : 'https://wmcc.zoom.us/closedcaption?id=…'}
-                      className="min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 font-mono text-xs text-ink"
+                      className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 font-mono text-xs text-ink"
                     />
                     <button type="submit" disabled={!token.trim() || busy !== null} className={BTN_SECONDARY}>
                       Save token
@@ -579,17 +589,17 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
                       {busy === 'test-caption' ? <Loader2 size={14} className="animate-spin" /> : <Captions size={14} />} Test caption
                     </button>
                     {zoomConnected && (
-                      <button type="button" disabled={busy !== null} onClick={() => void run('token', () => meetingApi.zoomToken(null))} className="px-1 text-xs text-muted underline hover:text-ink">
+                      <button type="button" disabled={busy !== null} onClick={() => void run('token', () => meetingApi.zoomToken(null))} className="t-meta px-1 underline hover:text-ink">
                         Remove token
                       </button>
                     )}
                   </form>
-                  {zoomConnected && !captionsTested && z?.last_error && <p className="mt-2 text-danger">{z.last_error}</p>}
+                  {zoomConnected && !captionsTested && z?.last_error && <p className="mt-4 text-danger">{z.last_error}</p>}
                 </Step>
 
                 <Step n={3} done={frame?.tone === 'ok'} warn={frame?.tone === 'warn'} title={frame?.tone === 'ok' ? 'Position check: framing good' : 'Position check'}>
                   {running && cameraOn ? (
-                    <div className="mt-2">
+                    <div className="mt-4">
                       <PositionCheck tick={tick} f={frame} cameraIndex={cameraIndex} />
                     </div>
                   ) : running ? (
@@ -597,7 +607,7 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
                   ) : (
                     <>
                       <p>Check that your head, shoulders and hands are in view. Zoom can keep using the camera.</p>
-                      <button type="button" disabled={!backendUp || busy !== null} onClick={() => void checkFraming()} className={`${BTN_SECONDARY} mt-2`}>
+                      <button type="button" disabled={!backendUp || busy !== null} onClick={() => void checkFraming()} className={`${BTN_SECONDARY} mt-4`}>
                         {busy === 'check' ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />} Check framing
                       </button>
                     </>
@@ -605,11 +615,11 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
                 </Step>
               </ol>
 
-              <div className="mt-8 border-t border-line pt-6">
-                <button type="button" disabled={!backendUp || busy !== null} onClick={() => void start()} className={`${BTN} w-full bg-accent px-6 py-4 text-lg text-white shadow-sm hover:opacity-90`}>
-                  {busy === 'start' ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} />} Start
+              <div className="stack border-t border-line pt-8">
+                <button type="button" disabled={!backendUp || busy !== null} onClick={() => void start()} className={`${BTN_PRIMARY} w-full`}>
+                  {busy === 'start' ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Start
                 </button>
-                <p className="mt-2 text-center text-xs text-faint">After starting you can minimize this window. Recognition keeps running with Zoom in front.</p>
+                <p className="t-meta text-center">After starting you can minimize this window. Recognition keeps running with Zoom in front.</p>
               </div>
             </section>
 
@@ -619,26 +629,32 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
         ) : (
           <>
             <h1 className="sr-only">Live in Zoom</h1>
-            <section aria-label="Last sent" className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
-              <p className="text-xs font-medium uppercase tracking-wider text-faint">Last sent</p>
-              <div aria-live="assertive" aria-atomic="true" className="min-h-[96px]">
+            <section aria-label="Last sent" className={CARD}>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <p className={H2}>Last sent</p>
+                {sending ? (
+                  <button type="button" disabled={busy !== null} onClick={() => void pause()} aria-pressed="true" title="Pause sending to the call (Ctrl+Shift+M)" className={BTN_DANGER}>
+                    <Radio size={14} className="animate-pulse" aria-hidden /> Live in call · Pause
+                  </button>
+                ) : (
+                  <button type="button" disabled={busy !== null} onClick={() => void resume()} aria-pressed="false" title="Resume sending to the call" className={BTN_SECONDARY}>
+                    <Pause size={14} aria-hidden /> Paused · Resume
+                  </button>
+                )}
+              </div>
+              <div aria-live="assertive" aria-atomic="true" className="min-h-[88px]">
                 {lastSent ? (
-                  <div key={lastSent.id} className="caption-in">
-                    <p className="mt-3 text-4xl font-bold tracking-tight text-ink sm:text-5xl">{lastSent.english}</p>
-                    <p className="mt-3 text-xs text-faint">
+                  <div key={lastSent.id} className="caption-in stack">
+                    <p className="t-display">{lastSent.english}</p>
+                    <p className="t-meta">
                       {timeOf(lastSent.at)} · spoken{status?.meeting?.config.captions ? ' and captioned' : ''} in the call
                     </p>
                   </div>
                 ) : (
-                  <p className="mt-3 text-3xl font-medium text-faint">{sending ? 'Waiting for a supported phrase…' : 'Sending is paused'}</p>
+                  <p className="text-xl font-medium text-faint">{sending ? 'Waiting for a supported phrase…' : 'Sending is paused'}</p>
                 )}
               </div>
-              <div className="mt-6 flex flex-wrap items-center gap-2">
-                {!sending && (
-                  <button type="button" disabled={busy !== null} onClick={() => void run('resume', () => meetingApi.config({ enabled: true, speech: true, captions: zoomConnected }))} className={`${BTN} bg-accent px-4 py-2 text-white hover:opacity-90`}>
-                    <Radio size={14} /> Resume sending
-                  </button>
-                )}
+              <div className="flex flex-wrap items-center gap-4">
                 {sending && (
                   <button type="button" disabled={busy !== null} onClick={() => void run('test', () => meetingApi.send('SignBridge is connected.', 'test'), 'Sent “SignBridge is connected.” to the call.')} className={BTN_SECONDARY}>
                     <Send size={14} /> Send test sentence
@@ -649,9 +665,6 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
                     <PictureInPicture2 size={14} /> {bubble.open ? 'Hide floating caption' : 'Floating caption'}
                   </button>
                 )}
-                <button type="button" disabled={busy !== null} onClick={() => void run('stop', () => backgroundApi.stop())} className={`${BTN} ml-auto border border-line px-3.5 py-2 text-danger hover:bg-danger-soft`}>
-                  <Square size={13} /> Stop
-                </button>
               </div>
             </section>
 
@@ -674,7 +687,7 @@ export function ConnectPage({ onUseBrowser }: { onUseBrowser: () => void }) {
           </>
         )}
 
-        <p className="mt-2 text-center text-xs leading-relaxed text-faint">
+        <p className="t-meta text-center leading-relaxed">
           {DISCLAIMER}{' '}
           <button type="button" className="underline hover:text-ink" onClick={() => setAboutOpen(true)}>
             Learn more
